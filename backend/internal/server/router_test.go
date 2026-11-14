@@ -25,7 +25,7 @@ func TestRouterMountsFeaturesUnderAPI(t *testing.T) {
 	}
 	for path, want := range tests {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil))
 		if rec.Code != want {
 			t.Errorf("GET %s = %d, want %d", path, rec.Code, want)
 		}

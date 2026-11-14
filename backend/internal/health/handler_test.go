@@ -30,7 +30,7 @@ func TestHandlerGet(t *testing.T) {
 			NewHandler(fakeChecker{tt.report}).Routes(r)
 
 			rec := httptest.NewRecorder()
-			r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/health", nil))
+			r.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health", nil))
 
 			if rec.Code != tt.wantStatus {
 				t.Fatalf("status = %d, want %d", rec.Code, tt.wantStatus)

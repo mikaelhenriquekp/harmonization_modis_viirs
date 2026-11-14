@@ -22,7 +22,6 @@ func NewRouter(log *slog.Logger, features ...RouteRegistrar) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
 	r.Use(requestLogger(log))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))

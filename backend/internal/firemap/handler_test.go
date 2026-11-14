@@ -18,6 +18,8 @@ import (
 type fakeRepo struct {
 	factor   int
 	from, to harmonize.Month
+	month    harmonize.Month
+	last     time.Time
 	cells    []Cell
 	err      error
 }

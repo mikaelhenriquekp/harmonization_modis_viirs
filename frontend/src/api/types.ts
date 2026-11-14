@@ -223,3 +223,90 @@ export interface Coverage {
   citations: string[]
   attribution: string
 }
+
+// Ember, the assistant
+
+export interface AssistantStatus {
+  enabled: boolean
+  model?: string
+}
+
+export interface ChatTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface PageContext {
+  area?: string
+  name?: string
+  from?: string
+  to?: string
+}
+
+export interface ChatRequest {
+  messages: ChatTurn[]
+  context?: PageContext
+}
+
+export type CardKind = 'calendar' | 'sensors' | 'anomalies' | 'hotspots' | 'region' | 'coverage'
+
+export interface AssistantCard {
+  kind: CardKind
+  title: string
+  area?: string
+  from?: string
+  to?: string
+  data: Record<string, unknown>
+}
+
+export interface CalendarCardData {
+  grid: Calendar['grid']
+  current: Current | null
+  peak: Peak
+  years: YearStat[]
+  scale: Scale
+  data_until: string
+}
+
+export interface AnomalyCell {
+  lat: number
+  lon: number
+  hotspots: number
+  projected: number
+  median: number | null
+  anomaly_pct: number | null
+  status: Status
+}
+
+export interface AnomaliesCardData {
+  month: string
+  data_until: string
+  counts: Partial<Record<Status, number>>
+  top: AnomalyCell[]
+}
+
+export interface HotspotsCardData {
+  total: number
+  cells: number
+  top: { lat: number; lon: number; hotspots: number }[]
+}
+
+export interface SensorsCardData {
+  years: { year: number; aqua: number; snpp: number; n20: number; harmonized: number }[]
+  ratios: SensorsResponse['ratios']
+}
+
+export type AssistantEvent =
+  | { type: 'tool_start'; id: string; name: string; args?: Record<string, unknown> }
+  | {
+      type: 'tool_end'
+      id: string
+      name: string
+      ok: boolean
+      error?: string
+      card?: AssistantCard
+      elapsed_ms?: number
+    }
+  | { type: 'text'; text: string }
+  | { type: 'done' }
+  | { type: 'error'; error: string }

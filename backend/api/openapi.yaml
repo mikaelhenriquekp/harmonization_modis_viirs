@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Paparajote Lunar API
+  title: Ctrl + Fire API
   version: 1.0.0
   summary: Harmonized MODIS and VIIRS active fire hotspots and a burning activity calendar.
   description: |

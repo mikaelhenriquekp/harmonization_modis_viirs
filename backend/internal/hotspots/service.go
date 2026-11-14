@@ -128,25 +128,11 @@ func areas(a geo.Area) []string {
 	if a.World {
 		return []string{"world"}
 	}
-	w, s, e, n := a.BBox[0], a.BBox[1], a.BBox[2], a.BBox[3]
+	w, s, e, n := a.BBox[0], a.BBox[1], a.BBox[2], a.BBox[3] // a polygon is fetched by its box and cropped
 	if w < e {
 		return []string{strings.Join([]string{f(w), f(s), f(e), f(n)}, ",")}
 	}
 	return []string{strings.Join([]string{f(w), f(s), "180", f(n)}, ","), strings.Join([]string{"-180", f(s), f(e), f(n)}, ",")}
-}
-
-func inBox(a geo.Area, lat, lon float64) bool {
-	if a.World {
-		return true
-	}
-	w, s, e, n := a.BBox[0], a.BBox[1], a.BBox[2], a.BBox[3]
-	if lat < s || lat > n {
-		return false
-	}
-	if w < e {
-		return lon >= w && lon <= e
-	}
-	return lon >= w || lon <= e
 }
 
 type job struct {
@@ -198,7 +184,7 @@ func (s *Service) Fetch(ctx context.Context, q Query) ([]Row, error) {
 			defer func() { <-sem }()
 			filter := harmonize.Filter{Satellite: satelliteOf(j.source)}
 			errs[i] = s.f.AreaRange(ctx, j.source, j.area, j.from, j.to, func(d harmonize.Detection) error {
-				if (q.All || filter.Keep(d)) && inBox(q.Area, d.Lat, d.Lon) {
+				if (q.All || filter.Keep(d)) && q.Area.ContainsPoint(d.Lat, d.Lon) {
 					results[i] = append(results[i], Row{Detection: d, Source: j.source})
 				}
 				return nil

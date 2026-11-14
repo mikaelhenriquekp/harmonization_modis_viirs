@@ -109,7 +109,7 @@ func (s *Service) remember(key string, build func() (any, error)) (any, error) {
 }
 
 func key(kind string, a geo.Area, from, to harmonize.Month) string {
-	return fmt.Sprintf("%s|%v|%s|%s", kind, a.Args(), from, to)
+	return fmt.Sprintf("%s|%s|%s|%s", kind, a.Key(), from, to)
 }
 
 func areaInfo(a geo.Area) AreaInfo {

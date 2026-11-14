@@ -63,8 +63,6 @@
   --surface-2: var(--card-2);
   --ink-2: var(--soft);
   --muted-foreground: var(--mute);
-  --accent-gold: var(--saffron);
-  --accent-ink: var(--saffron);
   --card-foreground: var(--bone);
   --primary: var(--bone);
   --primary-foreground: var(--bg);
@@ -105,8 +103,6 @@
   --color-garnet: var(--garnet);
   --color-slate: var(--slate);
   --color-slate-soft: var(--slate-soft);
-  --color-gold: var(--saffron);
-  --color-gold-ink: var(--saffron);
   --color-card-foreground: var(--bone);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -120,6 +116,7 @@
   --color-border: var(--line);
   --color-input: var(--line);
   --color-ring: var(--saffron);
+  --color-on-accent: var(--on-accent);
   --color-tone-critical: var(--tone-critical);
   --color-tone-serious: var(--tone-serious);
   --color-tone-neutral: var(--tone-neutral);
@@ -163,13 +160,6 @@
     font-family: var(--font-serif);
     font-style: italic;
     font-weight: 400;
-  }
-  .eyebrow {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--mute);
   }
   .hatch {
     background-image: repeating-linear-gradient(

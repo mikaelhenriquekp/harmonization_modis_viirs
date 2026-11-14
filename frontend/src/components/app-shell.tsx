@@ -1,4 +1,4 @@
-import { CalendarDays, Download, FlaskConical, Info, Satellite, Share2, Waves } from 'lucide-react'
+import { CalendarDays, Download, Earth, FlaskConical, Info, Satellite, Waves } from 'lucide-react'
 import { useEffect, type ComponentType } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 
@@ -15,7 +15,7 @@ interface NavItem {
 
 /** The rail of the wireframe: the globe, then the sections of the analysis. */
 const NAV: NavItem[] = [
-  { to: '/', label: 'Area', icon: Share2 },
+  { to: '/', label: 'Globe', icon: Earth },
   { to: '/analysis#calendar', label: 'Calendar', icon: CalendarDays, section: 'calendar' },
   { to: '/analysis#anomalies', label: 'Anomalies', icon: Waves, section: 'anomalies' },
   { to: '/analysis#sensors', label: 'Sensors', icon: Satellite, section: 'sensors' },
@@ -103,7 +103,7 @@ export function AppShell() {
     <div className="min-h-svh md:pl-[88px]">
       <a
         href="#main"
-        className="sr-only rounded-md bg-saffron px-3 py-2 text-[#100d0f] focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1000]"
+        className="sr-only rounded-md bg-saffron px-3 py-2 text-on-accent focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1000]"
       >
         Skip to content
       </a>

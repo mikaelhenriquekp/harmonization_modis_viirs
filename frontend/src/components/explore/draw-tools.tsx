@@ -33,7 +33,7 @@ function ToolButton({
       onClick={onClick}
       className={cn(
         'border-line flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
-        active ? 'bg-gold border-gold text-[#03133f]' : 'hover:bg-surface-2',
+        active ? 'bg-saffron border-saffron text-on-accent' : 'hover:bg-surface-2',
       )}
     >
       {icon}
@@ -116,7 +116,7 @@ export function DrawTools({
                 type="button"
                 onClick={() => dispatch({ type: 'finish' })}
                 disabled={points.length < 3}
-                className="bg-gold rounded-full px-3 py-1 font-medium text-[#03133f] disabled:opacity-40"
+                className="bg-saffron rounded-full px-3 py-1 font-medium text-on-accent disabled:opacity-40"
               >
                 Finish shape
               </button>

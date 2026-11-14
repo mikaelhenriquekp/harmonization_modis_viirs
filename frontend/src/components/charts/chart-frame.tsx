@@ -46,28 +46,3 @@ export function ChartTooltip({ children }: { children: ReactNode }) {
     </p>
   )
 }
-
-/** Diagonal texture for estimated values (also readable without color). */
-export function HatchPattern({ id }: { id: string }) {
-  return (
-    <defs>
-      <pattern
-        id={id}
-        width="5"
-        height="5"
-        patternUnits="userSpaceOnUse"
-        patternTransform="rotate(45)"
-      >
-        <line
-          x1="0"
-          y1="0"
-          x2="0"
-          y2="5"
-          stroke="var(--background)"
-          strokeWidth="2"
-          opacity="0.55"
-        />
-      </pattern>
-    </defs>
-  )
-}

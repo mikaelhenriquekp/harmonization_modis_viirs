@@ -54,7 +54,7 @@ export function PlacePicker({
       <label htmlFor={id} className="sr-only">
         Find a place or country
       </label>
-      <div className="border-line bg-surface focus-within:border-gold flex items-center gap-2 rounded-full border px-3">
+      <div className="border-line bg-surface focus-within:border-saffron flex items-center gap-2 rounded-full border px-3">
         <Search className="text-muted-foreground size-4" aria-hidden />
         <input
           id={id}
@@ -74,7 +74,7 @@ export function PlacePicker({
                 onPick(o.area, o.name)
                 setQuery('')
               }}
-              className="border-line hover:border-gold rounded-full border px-3 py-1 text-left text-sm"
+              className="border-line hover:border-saffron rounded-full border px-3 py-1 text-left text-sm"
               title={o.note}
             >
               {o.name}

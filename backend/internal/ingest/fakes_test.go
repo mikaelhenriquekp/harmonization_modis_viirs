@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -35,7 +36,10 @@ type fakeFIRMS struct {
 	avail     map[string]firms.DateRange
 	usage     []int // successive current_transactions answers; the last one repeats
 	statuses  int
+	availErr  error
 }
+
+var errBoom = errors.New("boom")
 
 func (f *fakeFIRMS) KeyStatus(context.Context) (firms.KeyStatus, error) {
 	f.mu.Lock()
@@ -120,7 +124,7 @@ func (f *fakeFIRMS) CountryFile(_ context.Context, product string, year int, cou
 }
 
 func (f *fakeFIRMS) Availability(context.Context) (map[string]firms.DateRange, error) {
-	return f.avail, nil
+	return f.avail, f.availErr
 }
 
 func (f *fakeFIRMS) AreaRange(_ context.Context, source, area string, from, to time.Time, fn func(harmonize.Detection) error) error {

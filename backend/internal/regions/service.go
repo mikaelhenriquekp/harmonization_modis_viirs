@@ -59,6 +59,14 @@ type Counts struct {
 	Error        int `json:"error"`
 }
 
+// Ingest is the state of the ingest job.
+type Ingest struct {
+	Phase      string `json:"phase"` // archive | pool | recent | idle
+	StartedAt  string `json:"started_at,omitempty"`
+	FinishedAt string `json:"finished_at,omitempty"`
+	LastError  string `json:"last_error,omitempty"`
+}
+
 // Coverage says what the data covers.
 type Coverage struct {
 	DataStart      string   `json:"data_start"`
@@ -67,6 +75,7 @@ type Coverage struct {
 	RecentLastDay  string   `json:"recent_last_day,omitempty"`
 	RecentFinalTo  string   `json:"recent_final_until,omitempty"`
 	Regions        Counts   `json:"regions"`
+	Ingest         Ingest   `json:"ingest"`
 	CellDegrees    float64  `json:"cell_degrees"`
 	Citations      []string `json:"citations"`
 	Attribution    string   `json:"attribution"`

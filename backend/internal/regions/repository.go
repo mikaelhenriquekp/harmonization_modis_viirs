@@ -106,6 +106,27 @@ func (r *PostgresRepository) Coverage(ctx context.Context) (Coverage, error) {
 	if err != nil {
 		return c, fmt.Errorf("query coverage: %w", err)
 	}
+	rows, err := r.db.Query(ctx, `SELECT key, value FROM ingest_state`)
+	if err != nil {
+		return c, fmt.Errorf("query ingest state: %w", err)
+	}
+	var k, v string
+	_, err = pgx.ForEachRow(rows, []any{&k, &v}, func() error {
+		switch k {
+		case "phase":
+			c.Ingest.Phase = v
+		case "run_started_at":
+			c.Ingest.StartedAt = v
+		case "run_finished_at":
+			c.Ingest.FinishedAt = v
+		case "last_error":
+			c.Ingest.LastError = v
+		}
+		return nil
+	})
+	if err != nil {
+		return c, fmt.Errorf("read ingest state: %w", err)
+	}
 	for _, p := range []struct {
 		t   *time.Time
 		dst *string

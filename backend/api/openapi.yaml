@@ -167,6 +167,40 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '500': { $ref: '#/components/responses/ServerError' }
 
+  /api/map/anomalies:
+    get:
+      tags: [map]
+      operationId: getAnomalyMap
+      summary: Early warning map, where fire is unusual this month
+      description: |
+        Every cell's month compared with the same month of every past year (years without hotspots count as zero).
+        An incomplete month is compared at its current pace (`projected`). Status thresholds are the calendar's:
+        `much_above` ≥ 90th percentile of past years, `above` ≥ 75th, `below` ≤ 25th, `much_below` ≤ 10th.
+        Cells with no fire now and a zero median are left out; cells with fire now but none in any past year (often
+        a country without harmonized history) get `no_history`. Cached for 30 minutes.
+      parameters:
+        - $ref: '#/components/parameters/Polygon'
+        - $ref: '#/components/parameters/BBox'
+        - $ref: '#/components/parameters/Lat'
+        - $ref: '#/components/parameters/Lon'
+        - $ref: '#/components/parameters/RadiusKm'
+        - name: month
+          in: query
+          description: Month to check, `YYYY-MM`. Defaults to the last month with data.
+          schema: { type: string, pattern: '^\d{4}-\d{2}$', example: '2025-08' }
+        - name: resolution
+          in: query
+          description: Cell size in degrees.
+          schema: { type: number, enum: [0.25, 0.5, 1, 2], default: 1 }
+      responses:
+        '200':
+          description: The anomalies.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnomalyResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /api/hotspots.csv:
     get:
       tags: [hotspots]
@@ -653,6 +687,36 @@ components:
         max_hotspots: { type: number }
         attribution: { type: string }
 
+    AnomalyResponse:
+      type: object
+      required: [month, data_until, elapsed_fraction, resolution, years_compared, cells, counts, attribution]
+      properties:
+        month: { type: string, example: '2025-08' }
+        data_until: { type: string, format: date }
+        elapsed_fraction: { type: number, description: "Share of the month covered by the data (1 for a complete month)." }
+        resolution: { type: number }
+        years_compared: { type: integer, description: Past years of the same month. }
+        cells:
+          type: array
+          items:
+            type: object
+            required: [lat, lon, hotspots, projected, rank, status]
+            properties:
+              lat: { type: number, description: Cell center. }
+              lon: { type: number }
+              hotspots: { type: number, description: Hotspots so far. }
+              projected: { type: number, description: For the whole month at the current pace. }
+              median: { type: [number, 'null'] }
+              anomaly_pct: { type: [number, 'null'] }
+              percentile: { type: [number, 'null'] }
+              rank: { type: integer, description: "1 = more than any past year." }
+              status: { type: string, enum: [much_above, above, normal, below, much_below, no_history] }
+        counts:
+          type: object
+          description: Cells per status.
+          additionalProperties: { type: integer }
+        attribution: { type: string }
+
     HotspotsResponse:
       type: object
       required: [from, to, count, columns, rows, attribution]
@@ -806,6 +870,14 @@ components:
             insufficient_data: { type: integer }
             pending: { type: integer }
             error: { type: integer }
+        ingest:
+          type: object
+          description: State of the ingest job.
+          properties:
+            phase: { type: string, enum: [archive, pool, recent, idle], description: "What it is doing now (empty before the first run)." }
+            started_at: { type: string, format: date-time }
+            finished_at: { type: string, format: date-time }
+            last_error: { type: string, description: Error of the last run; absent when it went well. }
         cell_degrees: { type: number, example: 0.25 }
         citations:
           type: array

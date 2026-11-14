@@ -25,6 +25,24 @@ services:
       PORT: "8080"
       LOG_LEVEL: info
       DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-app}?sslmode=disable
+      FIRMS_MAP_KEY: ${FIRMS_MAP_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Downloads FIRMS, harmonizes every country and refreshes recent days every 6 hours.
+  ingest:
+    build:
+      context: ../backend
+    entrypoint: ["/ingest"]
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: info
+      DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-app}?sslmode=disable
+      FIRMS_MAP_KEY: ${FIRMS_MAP_KEY:?FIRMS_MAP_KEY is required}
+      INGEST_INTERVAL: 6h
+      INGEST_WORKERS: "2"
     depends_on:
       db:
         condition: service_healthy

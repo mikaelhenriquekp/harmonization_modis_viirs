@@ -26,8 +26,31 @@ services:
       PORT: "8080"
       LOG_LEVEL: debug
       DATABASE_URL: postgres://app:app@db:5432/app?sslmode=disable
+      FIRMS_MAP_KEY: ${FIRMS_MAP_KEY:-}
     ports:
       - "${API_HOST_PORT:-8080}:8080"
+    volumes:
+      - .:/app
+      - gomodcache:/go/pkg/mod
+      - gobuildcache:/root/.cache/go-build
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Opt-in: docker compose --profile ingest up ingest
+  # Set FIRMS_MAP_KEY, and INGEST_COUNTRIES to avoid downloading the whole world (~53 GB).
+  ingest:
+    profiles: [ingest]
+    image: golang:1.26-alpine
+    working_dir: /app
+    command: go run ./cmd/ingest
+    environment:
+      APP_ENV: development
+      LOG_LEVEL: debug
+      DATABASE_URL: postgres://app:app@db:5432/app?sslmode=disable
+      FIRMS_MAP_KEY: ${FIRMS_MAP_KEY:-}
+      INGEST_COUNTRIES: ${INGEST_COUNTRIES:-Spain,Portugal,Greece,Chile,Malaysia}
+      INGEST_INTERVAL: ${INGEST_INTERVAL:-0}
     volumes:
       - .:/app
       - gomodcache:/go/pkg/mod

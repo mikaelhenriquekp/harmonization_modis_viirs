@@ -19,6 +19,12 @@ describe('useExploreParams', () => {
     expect(result.current[0]).toMatchObject({ area: DEFAULT_PLACE.area, name: DEFAULT_PLACE.name })
   })
 
+  it('can start somewhere else', () => {
+    const world = { area: { kind: 'world' as const }, name: 'The whole world' }
+    const { result } = renderHook(() => useExploreParams(world), { wrapper: wrapper('/') })
+    expect(result.current[0]).toMatchObject(world)
+  })
+
   it('reads a shared link', () => {
     const { result } = renderHook(() => useExploreParams(), {
       wrapper: wrapper('/?area=point:38,-1.1,10&name=Home&from=2010-01'),

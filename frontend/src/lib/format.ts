@@ -44,3 +44,8 @@ export function formatSignedPct(v: number): string {
   if (r === 0) return '0%'
   return `${r > 0 ? '+' : '−'}${whole.format(Math.abs(r))}%`
 }
+
+/** "37.992° N, 1.130° W". */
+export function formatCoords(lat: number, lon: number): string {
+  return `${Math.abs(lat).toFixed(3)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(3)}° ${lon >= 0 ? 'E' : 'W'}`
+}

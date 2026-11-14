@@ -14,7 +14,12 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        '/api': env.VITE_API_PROXY_TARGET ?? 'http://localhost:8080',
+        // changeOrigin sends the target's Host, so an https target behind
+        // Caddy (e.g. https://paparajotelunar.com) routes the request
+        '/api': {
+          target: env.VITE_API_PROXY_TARGET ?? 'http://localhost:8080',
+          changeOrigin: true,
+        },
       },
     },
   }

@@ -1,8 +1,9 @@
 import {
   CalendarDays,
+  Columns2,
   Download,
-  Earth,
   FlaskConical,
+  Map as MapIcon,
   Info,
   Satellite,
   Sparkles,
@@ -20,16 +21,37 @@ interface NavItem {
   icon: ComponentType<{ className?: string }>
   /** Section of the analysis page, matched against the URL hash. */
   section?: string
+  /** Left out of the phone's bottom bar, which has room for five. */
+  wideOnly?: boolean
 }
 
-/** The rail of the wireframe: the globe, then the sections of the analysis. */
+/** The rail of the wireframe: the atlas, then the sections of the analysis. */
 const NAV: NavItem[] = [
-  { to: '/', label: 'Globe', icon: Earth },
+  { to: '/', label: 'Atlas', icon: MapIcon },
+  { to: '/compare', label: 'Compare', icon: Columns2 },
   { to: '/ask', label: 'Ask', icon: Sparkles },
   { to: '/analysis#calendar', label: 'Calendar', icon: CalendarDays, section: 'calendar' },
-  { to: '/analysis#anomalies', label: 'Anomalies', icon: Waves, section: 'anomalies' },
-  { to: '/analysis#sensors', label: 'Sensors', icon: Satellite, section: 'sensors' },
-  { to: '/analysis#downloads', label: 'Downloads', icon: Download, section: 'downloads' },
+  {
+    to: '/analysis#anomalies',
+    label: 'Anomalies',
+    icon: Waves,
+    section: 'anomalies',
+    wideOnly: true,
+  },
+  {
+    to: '/analysis#sensors',
+    label: 'Sensors',
+    icon: Satellite,
+    section: 'sensors',
+    wideOnly: true,
+  },
+  {
+    to: '/analysis#downloads',
+    label: 'Downloads',
+    icon: Download,
+    section: 'downloads',
+    wideOnly: true,
+  },
   { to: '/method', label: 'Method', icon: FlaskConical },
 ]
 
@@ -38,6 +60,7 @@ function useActiveKey(): string {
   if (pathname === '/analysis') return hash.slice(1) || 'calendar'
   if (pathname === '/method') return 'method'
   if (pathname === '/ask') return 'ask'
+  if (pathname === '/compare') return 'compare'
   if (pathname === '/about') return 'about'
   return pathname === '/' ? 'area' : ''
 }
@@ -158,7 +181,7 @@ export function AppShell() {
         aria-label="Main"
         className="bg-rail/95 border-line fixed inset-x-0 bottom-0 z-[600] flex border-t px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        {NAV.map((n) => (
+        {NAV.filter((n) => !n.wideOnly).map((n) => (
           <RailLink key={n.label} item={n} active={active === keyOf(n)} search={search} compact />
         ))}
       </nav>

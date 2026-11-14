@@ -19,6 +19,8 @@ cd frontend && npm run lint && npm run format:check && npm run typecheck && npm 
 
 Ports can be changed with `API_HOST_PORT`, `DB_HOST_PORT` (default 5433) and `VITE_API_PROXY_TARGET`.
 
+To run the frontend against production data, put `VITE_API_PROXY_TARGET=https://paparajotelunar.com` in `frontend/.env.development.local` (gitignored) and run `npm run dev`; no local backend needed.
+
 ## Backend
 
 - One package per feature in `internal/<feature>/`, split into `handler.go`, `service.go` and `repository.go`.

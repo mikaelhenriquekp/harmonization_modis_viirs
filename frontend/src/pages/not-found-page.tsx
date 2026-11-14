@@ -11,7 +11,7 @@ export function NotFoundPage() {
         to="/"
         className="bg-saffron text-on-accent rounded-full px-5 py-2.5 text-sm font-semibold hover:brightness-110"
       >
-        Back to the globe
+        Back to the atlas
       </Link>
     </div>
   )

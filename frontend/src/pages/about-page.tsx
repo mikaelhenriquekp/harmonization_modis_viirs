@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 
 import mascot from '@/assets/mascot.webp'
-import { ATTRIBUTION } from '@/components/app-shell'
+import { ATTRIBUTION } from '@/lib/attribution'
 import { Section } from '@/components/state'
 import { useCoverage } from '@/hooks/use-fire'
 
@@ -9,7 +9,7 @@ const LIMITS = [
   'Months up to January 2012 are an estimate of what VIIRS would have seen, rebuilt from MODIS Aqua. They are good for seasonal patterns and trends, not for single fires.',
   'A month without hotspots means none were detected. Clouds, smoke, and small or short fires can hide fire from both satellites.',
   'The last months come from near real time data and are provisional; the current month is incomplete and compared at its current pace.',
-  'Each country has its own model. Some are flagged for review (exam bias above ±10% or a weak monthly fit), and small countries use a model pooled with their neighbours. The Validation page shows every country’s exam.',
+  'Each country has its own model. Some are flagged for review (exam bias above ±10% or a weak monthly fit), and small countries use a model pooled with their neighbours. The Method page shows every country’s exam.',
   'Areas are counted in 0.25° cells (about 25 km). A drawn shape keeps the cells whose center falls inside it; raw hotspot downloads are cut to the exact shape.',
   'Terra is left out on purpose: Aqua passes in the early afternoon like VIIRS, so the two can be calibrated against each other. The record therefore starts in July 2002.',
 ]
@@ -26,7 +26,7 @@ export function AboutPage() {
   const coverage = useCoverage()
   const c = coverage.data
   return (
-    <div className="mx-auto max-w-[960px] space-y-14 px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-[960px] space-y-14 px-4 py-10 sm:px-8">
       <header className="grid items-center gap-6 sm:grid-cols-[1fr_auto]">
         <div>
           <h1 className="text-[clamp(2rem,5vw,3.25rem)] leading-[1.05] font-semibold tracking-tight">
@@ -47,30 +47,32 @@ export function AboutPage() {
 
       <Section id="data" title="What is in it">
         <dl className="tabular grid gap-4 text-sm sm:grid-cols-3">
-          <div className="border-line rounded-xl border p-4">
+          <div className="bg-card border-line rounded-[20px] border p-4">
             <dt className="text-muted-foreground">Record</dt>
-            <dd className="mt-1 text-lg font-semibold">
+            <dd className="num mt-1 font-mono text-lg font-semibold">
               {c ? `${c.data_start} to ${c.recent_last_day ?? c.archive_end}` : '…'}
             </dd>
           </div>
-          <div className="border-line rounded-xl border p-4">
+          <div className="bg-card border-line rounded-[20px] border p-4">
             <dt className="text-muted-foreground">Countries harmonized</dt>
-            <dd className="mt-1 text-lg font-semibold">
+            <dd className="num mt-1 font-mono text-lg font-semibold">
               {c ? `${c.regions.harmonized} of ${c.regions.total}` : '…'}
             </dd>
           </div>
-          <div className="border-line rounded-xl border p-4">
+          <div className="bg-card border-line rounded-[20px] border p-4">
             <dt className="text-muted-foreground">Grid</dt>
-            <dd className="mt-1 text-lg font-semibold">{c ? `${c.cell_degrees}° cells` : '…'}</dd>
+            <dd className="num mt-1 font-mono text-lg font-semibold">
+              {c ? `${c.cell_degrees}° cells` : '…'}
+            </dd>
           </div>
         </dl>
         <p className="text-muted-foreground mt-4 text-sm">
           Updated every six hours. Developers can use the same data through the{' '}
-          <a href="/api/openapi.yaml" className="text-gold-ink underline underline-offset-4">
+          <a href="/api/openapi.yaml" className="text-saffron underline underline-offset-4">
             open API
           </a>
           ; see how it is built on the{' '}
-          <Link to="/validation" className="text-gold-ink underline underline-offset-4">
+          <Link to="/validation" className="text-saffron underline underline-offset-4">
             Validation
           </Link>{' '}
           page.
@@ -103,7 +105,7 @@ export function AboutPage() {
         </p>
         <ul className="mt-3 flex flex-wrap gap-2 text-sm">
           {TEAM.map((t) => (
-            <li key={t} className="border-line rounded-full border px-3 py-1">
+            <li key={t} className="bg-card border-line rounded-full border px-3 py-1">
               {t}
             </li>
           ))}

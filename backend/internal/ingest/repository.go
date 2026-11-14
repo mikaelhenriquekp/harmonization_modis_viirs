@@ -337,3 +337,31 @@ func (r *PostgresRepository) SaveRecent(ctx context.Context, w RecentWindow) err
 		return nil
 	})
 }
+
+// WorldTotalsReady reports whether the world totals have been summed.
+func (r *PostgresRepository) WorldTotalsReady(ctx context.Context) (bool, error) {
+	var ok bool
+	if err := r.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM world_months) AND EXISTS (SELECT 1 FROM world_sensor_months)`).Scan(&ok); err != nil {
+		return false, fmt.Errorf("check world totals: %w", err)
+	}
+	return ok, nil
+}
+
+// RefreshWorldTotals re-sums the world, per month and per sensor and month.
+func (r *PostgresRepository) RefreshWorldTotals(ctx context.Context) error {
+	return pgx.BeginFunc(ctx, r.db, func(tx pgx.Tx) error {
+		for _, q := range []string{
+			`DELETE FROM world_months`,
+			`INSERT INTO world_months (month, hotspots, frp, source)
+			 SELECT month, sum(hotspots), sum(frp), min(source) FROM cell_months GROUP BY month`,
+			`DELETE FROM world_sensor_months`,
+			`INSERT INTO world_sensor_months (sensor, month, hotspots)
+			 SELECT sensor, month, sum(hotspots) FROM sensor_cell_months GROUP BY sensor, month`,
+		} {
+			if _, err := tx.Exec(ctx, q); err != nil {
+				return fmt.Errorf("world totals: %w", err)
+			}
+		}
+		return nil
+	})
+}

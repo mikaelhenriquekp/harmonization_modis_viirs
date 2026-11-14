@@ -167,6 +167,23 @@ type fakeStore struct {
 	state     map[string]string
 	recent    map[string][]RecentRow // day -> rows
 	recentDay map[string]RecentDay
+
+	worldReady     bool
+	worldRefreshes int
+}
+
+func (s *fakeStore) WorldTotalsReady(context.Context) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.worldReady, nil
+}
+
+func (s *fakeStore) RefreshWorldTotals(context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.worldRefreshes++
+	s.worldReady = true
+	return nil
 }
 
 func newFakeStore() *fakeStore {

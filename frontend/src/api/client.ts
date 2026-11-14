@@ -1,4 +1,3 @@
-/** Base path for every API call. Same-origin: Vite proxies it in dev, Caddy in prod. */
 export const API_BASE_URL = '/api'
 
 export class ApiError extends Error {
@@ -15,7 +14,6 @@ export class ApiError extends Error {
 
 type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 
-/** Thin fetch wrapper: JSON in/out, throws ApiError on non-2xx responses. */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, ...init } = options
 

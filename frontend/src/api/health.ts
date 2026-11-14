@@ -9,7 +9,6 @@ export interface HealthReport {
   greeting?: string
 }
 
-/** Fetches the backend health report. A 503 still carries a report, so we return it. */
 export async function getHealth(signal?: AbortSignal): Promise<HealthReport> {
   try {
     return await api.get<HealthReport>('/health', { signal })

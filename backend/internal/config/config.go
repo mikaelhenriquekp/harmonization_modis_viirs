@@ -15,6 +15,7 @@ type Config struct {
 	Env             string
 	Port            string
 	DatabaseURL     string
+	MapKey          string // optional: enables raw hotspot downloads
 	LogLevel        slog.Level
 	ShutdownTimeout time.Duration
 }
@@ -25,6 +26,7 @@ func Load() (Config, error) {
 		Env:             getEnv("APP_ENV", "development"),
 		Port:            getEnv("PORT", "8080"),
 		DatabaseURL:     os.Getenv("DATABASE_URL"),
+		MapKey:          os.Getenv("FIRMS_MAP_KEY"),
 		ShutdownTimeout: 10 * time.Second,
 	}
 

@@ -17,7 +17,7 @@ func TestLoadIngest(t *testing.T) {
 			name: "defaults",
 			env:  map[string]string{"DATABASE_URL": "postgres://x", "FIRMS_MAP_KEY": "k"},
 			want: func(c Ingest) bool {
-				return c.Workers == 3 && c.Interval == 6*time.Hour && c.RecentDays == 7 && len(c.Countries) == 0 &&
+				return c.Workers == 3 && c.Interval == 6*time.Hour && c.RecentDays == 7 && c.TxBudget == 3000 && len(c.Countries) == 0 &&
 					c.Priority[0] == "Spain" && !c.Once
 			},
 		},

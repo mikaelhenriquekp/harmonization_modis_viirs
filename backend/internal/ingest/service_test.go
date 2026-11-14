@@ -201,3 +201,19 @@ func TestHaversine(t *testing.T) {
 		t.Errorf("1° at the equator = %v km", d)
 	}
 }
+
+func TestRecentWaitsWhenTheKeyIsBusy(t *testing.T) {
+	src, store := newFake(), newFakeStore()
+	src.avail = map[string]firms.DateRange{"VIIRS_NOAA20_NRT": {Min: date("2026-11-10"), Max: date("2026-11-14")}}
+	src.usage = []int{4900, 4200, 100}
+	svc := newService(src, store, Config{TxBudget: 3000, PaceWait: time.Millisecond})
+	if err := svc.Recent(t.Context(), harmonize.MustMonth("2026-10")); err != nil {
+		t.Fatal(err)
+	}
+	if src.statuses < 3 {
+		t.Errorf("checked the key %d times, want at least 3 (wait until under budget)", src.statuses)
+	}
+	if len(src.callsMatching("VIIRS")) != 1 {
+		t.Errorf("calls = %v", src.callsMatching("VIIRS"))
+	}
+}

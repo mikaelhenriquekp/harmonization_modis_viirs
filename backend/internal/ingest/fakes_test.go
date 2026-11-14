@@ -33,6 +33,22 @@ type fakeFIRMS struct {
 	calls     []string
 	area      map[string][]harmonize.Detection // source -> detections
 	avail     map[string]firms.DateRange
+	usage     []int // successive current_transactions answers; the last one repeats
+	statuses  int
+}
+
+func (f *fakeFIRMS) KeyStatus(context.Context) (firms.KeyStatus, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.statuses++
+	if len(f.usage) == 0 {
+		return firms.KeyStatus{Limit: 5000}, nil
+	}
+	cur := f.usage[0]
+	if len(f.usage) > 1 {
+		f.usage = f.usage[1:]
+	}
+	return firms.KeyStatus{Limit: 5000, Current: cur}, nil
 }
 
 var season = [12]float64{.3, .5, .9, .6, .4, .6, 1.6, 2.4, 1.5, .9, .5, .3}

@@ -55,6 +55,7 @@ func run() error {
 		Priority:   cfg.Priority,
 		Workers:    cfg.Workers,
 		RecentDays: cfg.RecentDays,
+		TxBudget:   cfg.TxBudget,
 	}, log)
 
 	for {

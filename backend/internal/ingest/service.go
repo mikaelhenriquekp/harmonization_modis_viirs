@@ -57,6 +57,7 @@ type Source interface {
 	CountryFile(ctx context.Context, product string, year int, country string, fn func(harmonize.Detection) error) error
 	Availability(ctx context.Context) (map[string]firms.DateRange, error)
 	AreaRange(ctx context.Context, source, area string, from, to time.Time, fn func(harmonize.Detection) error) error
+	KeyStatus(ctx context.Context) (firms.KeyStatus, error)
 }
 
 // FileResult is one ingested archive file, summarized.
@@ -138,6 +139,11 @@ type Config struct {
 	RecentDays int // near real time days fetched again on every run
 	SkipRecent bool
 	Now        func() time.Time
+	// TxBudget is how many of the key's transactions (per 10 minutes) the
+	// ingest may use, leaving the rest for users downloading hotspots. A world
+	// request of 5 days costs about 180 transactions.
+	TxBudget int
+	PaceWait time.Duration
 }
 
 // Pooling limits for countries with too little fire.
@@ -164,6 +170,12 @@ func NewService(src Source, store Store, cfg Config, log *slog.Logger) *Service 
 	}
 	if cfg.Now == nil {
 		cfg.Now = time.Now
+	}
+	if cfg.TxBudget < 1 {
+		cfg.TxBudget = 3000
+	}
+	if cfg.PaceWait <= 0 {
+		cfg.PaceWait = 30 * time.Second
 	}
 	return &Service{src: src, store: store, cfg: cfg, log: log}
 }
@@ -536,11 +548,34 @@ func (s *Service) Recent(ctx context.Context, archiveEnd harmonize.Month) error 
 	}
 	s.log.InfoContext(ctx, "ingest: recent", "from", from.Format(time.DateOnly), "requests", len(runs))
 	for _, r := range runs {
+		if err := s.pace(ctx); err != nil {
+			return err
+		}
 		if err := s.recentWindow(ctx, r.source, r.final, r.from, r.to, mask); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// pace waits until the key has used less than the ingest's budget.
+func (s *Service) pace(ctx context.Context) error {
+	for {
+		st, err := s.src.KeyStatus(ctx)
+		if err != nil {
+			s.log.WarnContext(ctx, "ingest: key status", "error", err)
+			return nil // the client still waits out the limit if we hit it
+		}
+		if st.Current < s.cfg.TxBudget {
+			return nil
+		}
+		s.log.InfoContext(ctx, "ingest: waiting for FIRMS transactions", "used", st.Current, "budget", s.cfg.TxBudget)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(s.cfg.PaceWait):
+		}
+	}
 }
 
 func (s *Service) recentWindow(ctx context.Context, source string, final bool, from, to time.Time, mask *harmonize.FixedSources) error {

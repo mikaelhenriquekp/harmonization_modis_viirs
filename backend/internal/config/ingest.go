@@ -25,6 +25,7 @@ type Ingest struct {
 	Interval    time.Duration // time between runs
 	Once        bool          // INGEST_INTERVAL=0: run once and exit
 	RecentDays  int
+	TxBudget    int // FIRMS transactions per 10 minutes the ingest may use
 	LogLevel    slog.Level
 }
 
@@ -48,6 +49,9 @@ func LoadIngest() (Ingest, error) {
 		return Ingest{}, err
 	}
 	if c.RecentDays, err = positiveInt("INGEST_RECENT_DAYS", 7); err != nil {
+		return Ingest{}, err
+	}
+	if c.TxBudget, err = positiveInt("INGEST_TX_BUDGET", 3000); err != nil {
 		return Ingest{}, err
 	}
 	interval := getEnv("INGEST_INTERVAL", "6h")

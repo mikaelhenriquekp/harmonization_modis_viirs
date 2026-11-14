@@ -217,3 +217,28 @@ func TestRecentWaitsWhenTheKeyIsBusy(t *testing.T) {
 		t.Errorf("calls = %v", src.callsMatching("VIIRS"))
 	}
 }
+
+func TestRunRecordsItsProgress(t *testing.T) {
+	src, store := newFake(), newFakeStore()
+	svc := newService(src, store, Config{Workers: 1, SkipRecent: true, Now: func() time.Time { return date("2026-11-14") }})
+	if err := svc.Run(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if store.state[StatePhase] != PhaseIdle || store.state[StateStartedAt] == "" || store.state[StateFinishedAt] == "" || store.state[StateLastError] != "" {
+		t.Errorf("state = %v", store.state)
+	}
+}
+
+func TestRunRecordsItsError(t *testing.T) {
+	src, store := newFake(), newFakeStore()
+	src.avail = nil
+	src.area = map[string][]harmonize.Detection{}
+	src.availErr = errBoom
+	svc := newService(src, store, Config{Workers: 1})
+	if err := svc.Run(t.Context()); err == nil {
+		t.Fatal("want error")
+	}
+	if !strings.Contains(store.state[StateLastError], "boom") || store.state[StatePhase] != PhaseIdle {
+		t.Errorf("state = %v", store.state)
+	}
+}

@@ -32,8 +32,22 @@ const (
 	SensorN20  = "n20"
 )
 
-// StateArchiveEnd is the ingest_state key with the last archive month.
-const StateArchiveEnd = "archive_end"
+// ingest_state keys.
+const (
+	StateArchiveEnd = "archive_end"     // last archive month
+	StatePhase      = "phase"           // what the ingest is doing
+	StateStartedAt  = "run_started_at"  // start of the current or last run
+	StateFinishedAt = "run_finished_at" // end of the last run
+	StateLastError  = "last_error"      // error of the last run, empty if it went well
+)
+
+// Phases of a run.
+const (
+	PhaseArchive = "archive" // downloading and harmonizing countries
+	PhasePool    = "pool"    // pooling the small countries
+	PhaseRecent  = "recent"  // fetching the days after the archive
+	PhaseIdle    = "idle"    // waiting for the next run
+)
 
 // Recent data sources of the area API.
 const (
@@ -199,8 +213,30 @@ func ArchiveEnd(lastYear int) harmonize.Month {
 }
 
 // Run ingests the archive, harmonizes every changed country, pools the small
-// ones and updates the recent days.
-func (s *Service) Run(ctx context.Context) error {
+// ones and updates the recent days. Its progress is kept in ingest_state.
+func (s *Service) Run(ctx context.Context) (err error) {
+	s.state(ctx, StateStartedAt, s.cfg.Now().UTC().Format(time.RFC3339))
+	s.state(ctx, StatePhase, PhaseArchive)
+	defer func() {
+		msg := ""
+		if err != nil {
+			msg = err.Error()
+		}
+		s.state(context.WithoutCancel(ctx), StateLastError, msg)
+		s.state(context.WithoutCancel(ctx), StateFinishedAt, s.cfg.Now().UTC().Format(time.RFC3339))
+		s.state(context.WithoutCancel(ctx), StatePhase, PhaseIdle)
+	}()
+	return s.run(ctx)
+}
+
+// state records progress; failing to record it never stops the ingest.
+func (s *Service) state(ctx context.Context, key, value string) {
+	if err := s.store.SetState(ctx, key, value); err != nil {
+		s.log.WarnContext(ctx, "ingest: record state", "key", key, "error", err)
+	}
+}
+
+func (s *Service) run(ctx context.Context) error {
 	idx, err := s.src.Index(ctx)
 	if err != nil {
 		return fmt.Errorf("read archive index: %w", err)
@@ -252,12 +288,14 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
+	s.state(ctx, StatePhase, PhasePool)
 	if err := s.pool(ctx, archiveEnd, changed.Load() > 0); err != nil {
 		return fmt.Errorf("pool small countries: %w", err)
 	}
 	if s.cfg.SkipRecent {
 		return nil
 	}
+	s.state(ctx, StatePhase, PhaseRecent)
 	return s.Recent(ctx, archiveEnd)
 }
 

@@ -191,3 +191,30 @@ func TestBuildStopsWhereTheDataStops(t *testing.T) {
 		t.Errorf("August with every day fetched is complete: %+v", *cur)
 	}
 }
+
+func TestCompare(t *testing.T) {
+	past := []float64{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
+	tests := []struct {
+		value      float64
+		wantStatus string
+		wantRank   int
+	}{
+		{1000, StatusMuchAbove, 1},
+		{85, StatusAbove, 3},
+		{55, StatusNormal, 6},
+		{22, StatusBelow, 9},
+		{0, StatusMuchBelow, 11},
+	}
+	for _, tt := range tests {
+		c := Compare(past, tt.value)
+		if c.Status != tt.wantStatus || c.Rank != tt.wantRank || c.Median == nil || *c.Median != 55 {
+			t.Errorf("Compare(%v) = %+v", tt.value, c)
+		}
+	}
+	if c := Compare(nil, 5); c.Status != StatusNoHistory || c.Median != nil || c.Rank != 1 {
+		t.Errorf("no history = %+v", c)
+	}
+	if c := Compare([]float64{0, 0, 0}, 0); c.Status != StatusNormal || c.AnomalyPct != nil {
+		t.Errorf("all zeros = %+v", c)
+	}
+}

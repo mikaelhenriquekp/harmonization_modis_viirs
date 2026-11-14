@@ -92,3 +92,18 @@ func TestCoverageCountsRegions(t *testing.T) {
 		t.Errorf("coverage = %+v", got)
 	}
 }
+
+func TestCoverageShowsTheIngest(t *testing.T) {
+	repo := newRepo()
+	repo.cov.Ingest = Ingest{Phase: "recent", StartedAt: "2026-11-14T12:56:00Z", LastError: ""}
+	rec := serve(t, repo, "/coverage")
+	var got struct {
+		Ingest map[string]any `json:"ingest"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Ingest["phase"] != "recent" || got.Ingest["started_at"] != "2026-11-14T12:56:00Z" {
+		t.Errorf("ingest = %v", got.Ingest)
+	}
+}

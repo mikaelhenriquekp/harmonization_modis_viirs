@@ -5,6 +5,7 @@ package firemap
 import (
 	"context"
 	"math"
+	"time"
 
 	"github.com/nasa-challenge/app/backend/internal/calendar"
 	"github.com/nasa-challenge/app/backend/internal/geo"
@@ -26,6 +27,10 @@ type Repository interface {
 	// Cells sums the series of the area over [from, to], aggregating
 	// factor x factor grid cells.
 	Cells(ctx context.Context, a geo.Area, from, to harmonize.Month, factor int) ([]Cell, error)
+	// SameMonth sums every year's m.Calendar() month up to m, per aggregated cell.
+	SameMonth(ctx context.Context, a geo.Area, m harmonize.Month, factor int) ([]CellYear, error)
+	// LastDay is the last day of data.
+	LastDay(ctx context.Context) (time.Time, error)
 }
 
 // Response is the map of a period.
@@ -42,11 +47,14 @@ type Response struct {
 
 // Service builds maps.
 type Service struct {
-	repo Repository
+	repo  Repository
+	cache anomalyCache
 }
 
 // NewService builds a Service.
-func NewService(repo Repository) *Service { return &Service{repo: repo} }
+func NewService(repo Repository) *Service {
+	return &Service{repo: repo, cache: anomalyCache{at: map[string]time.Time{}, vals: map[string]AnomalyResponse{}}}
+}
 
 // Map returns the cells with hotspots of the area over [from, to].
 func (s *Service) Map(ctx context.Context, a geo.Area, from, to harmonize.Month, resolution float64) (Response, error) {

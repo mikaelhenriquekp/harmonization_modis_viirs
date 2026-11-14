@@ -32,6 +32,11 @@ func dateMonth(t time.Time) harmonize.Month { return harmonize.NewMonth(t.Year()
 // MonthlyTotals sums the area's harmonized archive months up to archiveEnd
 // and its recent VIIRS days after it.
 func (r *PostgresRepository) MonthlyTotals(ctx context.Context, a geo.Area, from, to, archiveEnd harmonize.Month) ([]MonthTotal, error) {
+	if a.World {
+		if out, ok, err := r.worldMonthlyTotals(ctx, from, to, archiveEnd); err != nil || ok {
+			return out, err
+		}
+	}
 	args := append(a.Args(), monthDate(from), monthDate(to), monthDate(archiveEnd))
 	cond := geo.Condition(1)
 	rows, err := r.db.Query(ctx, fmt.Sprintf(`
@@ -59,14 +64,62 @@ func (r *PostgresRepository) MonthlyTotals(ctx context.Context, a geo.Area, from
 	return out, err
 }
 
+// worldMonthlyTotals reads the pre-summed world totals; ok is false while the
+// ingest has not filled them yet.
+func (r *PostgresRepository) worldMonthlyTotals(ctx context.Context, from, to, archiveEnd harmonize.Month) ([]MonthTotal, bool, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT month, hotspots::float8, frp::float8, source, false
+		FROM world_months
+		WHERE month BETWEEN $1::date AND LEAST($2::date, $3::date)
+		UNION ALL
+		SELECT date_trunc('month', day)::date, sum(hotspots)::float8, sum(frp)::float8, 'viirs_recent', bool_or(provisional)
+		FROM recent_cell_days
+		WHERE day >= GREATEST($1::date, ($3::date + interval '1 month')::date) AND day < ($2::date + interval '1 month')::date
+		GROUP BY 1
+		ORDER BY 1`, monthDate(from), monthDate(to), monthDate(archiveEnd))
+	if err != nil {
+		return nil, false, fmt.Errorf("query world totals: %w", err)
+	}
+	var out []MonthTotal
+	archive := 0
+	var m time.Time
+	var t MonthTotal
+	_, err = pgx.ForEachRow(rows, []any{&m, &t.Hotspots, &t.FRP, &t.Source, &t.Provisional}, func() error {
+		t.Month = dateMonth(m)
+		if t.Source != "viirs_recent" {
+			archive++
+		}
+		out = append(out, t)
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	return out, archive > 0 || from > archiveEnd, nil
+}
+
 // SensorTotals sums the raw sensors of the area per month.
 func (r *PostgresRepository) SensorTotals(ctx context.Context, a geo.Area, from, to harmonize.Month) ([]SensorTotal, error) {
+	if a.World {
+		var ready bool
+		if err := r.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM world_sensor_months)`).Scan(&ready); err != nil {
+			return nil, fmt.Errorf("check world sensor totals: %w", err)
+		}
+		if ready {
+			return r.sensorRows(ctx, `SELECT sensor, month, hotspots::float8 FROM world_sensor_months WHERE month BETWEEN $1 AND $2`,
+				monthDate(from), monthDate(to))
+		}
+	}
 	args := append(a.Args(), monthDate(from), monthDate(to))
-	rows, err := r.db.Query(ctx, fmt.Sprintf(`
+	return r.sensorRows(ctx, fmt.Sprintf(`
 		SELECT sensor, month, sum(hotspots)::float8
 		FROM sensor_cell_months
 		WHERE %s AND month BETWEEN $9 AND $10
 		GROUP BY sensor, month`, geo.Condition(1)), args...)
+}
+
+func (r *PostgresRepository) sensorRows(ctx context.Context, sql string, args ...any) ([]SensorTotal, error) {
+	rows, err := r.db.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query sensor totals: %w", err)
 	}

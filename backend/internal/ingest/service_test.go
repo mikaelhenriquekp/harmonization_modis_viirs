@@ -242,3 +242,27 @@ func TestRunRecordsItsError(t *testing.T) {
 		t.Errorf("state = %v", store.state)
 	}
 }
+
+func TestRunRefreshesWorldTotalsOnlyWhenNeeded(t *testing.T) {
+	src, store := newFake(), newFakeStore()
+	svc := newService(src, store, Config{Workers: 1, SkipRecent: true})
+	if err := svc.Run(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if store.worldRefreshes != 1 {
+		t.Fatalf("first run refreshed %d times, want 1", store.worldRefreshes)
+	}
+	if err := svc.Run(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if store.worldRefreshes != 1 {
+		t.Errorf("nothing changed: refreshed %d times, want still 1", store.worldRefreshes)
+	}
+	store.worldReady = false // e.g. a fresh deploy with the new table
+	if err := svc.Run(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if store.worldRefreshes != 2 {
+		t.Errorf("empty totals must be filled: refreshed %d times, want 2", store.worldRefreshes)
+	}
+}

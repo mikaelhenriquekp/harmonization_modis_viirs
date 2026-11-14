@@ -143,6 +143,10 @@ type Store interface {
 	FixedSources(ctx context.Context) (*harmonize.FixedSources, error)
 	RecentDays(ctx context.Context) (map[string]RecentDay, error)
 	SaveRecent(ctx context.Context, w RecentWindow) error
+	// WorldTotalsReady reports whether the pre-summed world totals exist.
+	WorldTotalsReady(ctx context.Context) (bool, error)
+	// RefreshWorldTotals re-sums the world from the harmonized series.
+	RefreshWorldTotals(ctx context.Context) error
 }
 
 // Config tunes a run.
@@ -291,6 +295,15 @@ func (s *Service) run(ctx context.Context) error {
 	s.state(ctx, StatePhase, PhasePool)
 	if err := s.pool(ctx, archiveEnd, changed.Load() > 0); err != nil {
 		return fmt.Errorf("pool small countries: %w", err)
+	}
+	ready, err := s.store.WorldTotalsReady(ctx)
+	if err != nil {
+		return err
+	}
+	if changed.Load() > 0 || !ready {
+		if err := s.store.RefreshWorldTotals(ctx); err != nil {
+			return fmt.Errorf("refresh world totals: %w", err)
+		}
 	}
 	if s.cfg.SkipRecent {
 		return nil

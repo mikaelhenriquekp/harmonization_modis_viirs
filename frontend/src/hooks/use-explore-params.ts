@@ -15,18 +15,18 @@ export interface ExploreParams {
  * The area and period being explored, kept in the URL so every view is a
  * shareable link: ?area=bbox:-2.35,37.37,-0.65,38.76&name=Región de Murcia&from=2010-01
  */
-export function useExploreParams() {
+export function useExploreParams(fallback: { area: Area; name: string } = DEFAULT_PLACE) {
   const [params, setParams] = useSearchParams()
 
   const value = useMemo<ExploreParams>(() => {
     const area = parseAreaSearch(params.get('area'))
     return {
-      area: area ?? DEFAULT_PLACE.area,
-      name: params.get('name') ?? (area ? 'Your area' : DEFAULT_PLACE.name),
+      area: area ?? fallback.area,
+      name: params.get('name') ?? (area ? 'Your area' : fallback.name),
       from: params.get('from') ?? undefined,
       to: params.get('to') ?? undefined,
     }
-  }, [params])
+  }, [params, fallback.area, fallback.name])
 
   const update = useCallback(
     (patch: Partial<ExploreParams>) => {

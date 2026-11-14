@@ -40,12 +40,13 @@ export function useSensors(area: Area, range: MonthRange) {
   })
 }
 
-export function useFireMap(q: FireMapQuery) {
+export function useFireMap(q: FireMapQuery, enabled = true) {
   return useQuery({
     queryKey: fireKeys.map(q),
     queryFn: ({ signal }) => getFireMap(q, signal),
     placeholderData: keepPreviousData,
     staleTime: FIVE_MINUTES,
+    enabled,
   })
 }
 
@@ -84,11 +85,17 @@ export function useCoverage() {
   })
 }
 
-export function useHotspots(area: Area, from: string | undefined, to: string | undefined) {
+export function useHotspots(
+  area: Area,
+  from: string | undefined,
+  to: string | undefined,
+  enabled = true,
+) {
   return useQuery({
     queryKey: ['hotspots', areaToSearch(area), from, to] as const,
     queryFn: ({ signal }) => getHotspots(area, from!, to!, signal),
-    enabled: !!from && !!to,
+    enabled: enabled && !!from && !!to,
+    placeholderData: keepPreviousData,
     staleTime: FIVE_MINUTES,
     retry: false,
   })

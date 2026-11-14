@@ -52,7 +52,7 @@ function ExamTable({
                   {e.model === 'raw' ? '' : `${e.model} · `}
                   {e.name}
                   {isChosen && (
-                    <span className="text-gold-ink ml-2 text-xs font-semibold">chosen</span>
+                    <span className="text-saffron ml-2 text-xs font-semibold">chosen</span>
                   )}
                 </th>
                 <td className="px-3 py-1.5">
@@ -88,12 +88,12 @@ export function RegionExam({ region: r }: { region: RegionDetail }) {
         <h3 className="text-lg font-semibold">{r.name}</h3>
         <p className="text-ink-2 mt-1 leading-relaxed">
           {r.scope === 'regional'
-            ? `Too little fire to learn a model of its own: pooled with ${r.pooled_with.join(', ')}. `
+            ? `Too little fire for a model of its own, so it shares one with ${r.pooled_with.map((p) => p.replaceAll('_', ' ')).join(', ')}. `
             : ''}
           Learned on {r.periods.learn[0]} to {r.periods.learn[1]} from{' '}
           {r.train_hotspots.toLocaleString('en')} Aqua hotspots, graded on {r.periods.exam[0]} to{' '}
           {r.periods.exam[1]}, then used to rebuild {r.periods.reconstructed[0]} to{' '}
-          {r.periods.reconstructed[1]}. The model with the lowest error within ±10% bias is chosen.
+          {r.periods.reconstructed[1]}.
         </p>
         {r.warnings.length > 0 && (
           <ul className="mt-2 space-y-1">
@@ -128,13 +128,12 @@ export function RegionExam({ region: r }: { region: RegionDetail }) {
           chosen={r.energy_model}
         />
       )}
-      <p className="text-muted-foreground">
-        Suomi NPP to NOAA-20 handover:{' '}
-        {r.handover_noaa20_over_snpp === null
-          ? 'not measurable'
-          : `NOAA-20 sees ×${r.handover_noaa20_over_snpp.toFixed(3)} what Suomi NPP saw`}{' '}
-        (1 means the satellites agree; the recent months come from NOAA-20).
-      </p>
+      {r.handover_noaa20_over_snpp !== null && (
+        <p className="text-muted-foreground">
+          Suomi NPP to NOAA-20 handover: ×{r.handover_noaa20_over_snpp.toFixed(3)} (×1 means the two
+          satellites agree).
+        </p>
+      )}
     </div>
   )
 }

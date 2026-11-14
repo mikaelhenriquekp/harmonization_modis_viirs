@@ -1,0 +1,21 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Backend
+backend/tmp/
+backend/bin/
+backend/coverage.out
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+*.log

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -28,6 +29,38 @@ func TestRouterMountsFeaturesUnderAPI(t *testing.T) {
 		h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil))
 		if rec.Code != want {
 			t.Errorf("GET %s = %d, want %d", path, rec.Code, want)
+		}
+	}
+}
+
+type slowFeature struct{}
+
+func (slowFeature) Routes(r chi.Router) {
+	deadline := func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := r.Context().Deadline(); ok {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+	r.Get("/calendar", deadline)
+	r.Post("/assistant/chat", deadline)
+}
+
+func TestRouterTimeoutSkipsTheStreamingChat(t *testing.T) {
+	h := NewRouter(slog.New(slog.NewTextHandler(io.Discard, nil)), slowFeature{})
+	tests := []struct {
+		method, path string
+		want         int
+	}{
+		{http.MethodGet, "/api/calendar", http.StatusOK},               // has the router's deadline
+		{http.MethodPost, "/api/assistant/chat", http.StatusNoContent}, // bounds itself
+	}
+	for _, tt := range tests {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), tt.method, tt.path, nil))
+		if rec.Code != tt.want {
+			t.Errorf("%s %s = %d, want %d", tt.method, tt.path, rec.Code, tt.want)
 		}
 	}
 }

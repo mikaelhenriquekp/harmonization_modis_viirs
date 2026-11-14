@@ -43,6 +43,8 @@ tags:
     description: Raw detections, downloaded from FIRMS on demand.
   - name: regions
     description: Harmonized countries, their models and the data coverage.
+  - name: assistant
+    description: Ember, an AI fire analyst that answers questions with this API's data.
   - name: system
     description: Health and documentation.
 
@@ -319,6 +321,51 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Coverage' }
         '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/assistant/status:
+    get:
+      tags: [assistant]
+      operationId: getAssistantStatus
+      summary: Whether Ember, the AI fire analyst, can answer
+      responses:
+        '200':
+          description: Enabled when the server has a model configured.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssistantStatus' }
+
+  /api/assistant/chat:
+    post:
+      tags: [assistant]
+      operationId: chatAssistant
+      summary: Ask Ember a question about the data (streamed)
+      description: |
+        Ember answers with a language model that calls this API's own data (calendar, anomalies, map, sensors,
+        regions, coverage) as tools. The answer is a stream of server-sent events; each `data` line is a JSON
+        `AssistantEvent`: `tool_start` and `tool_end` (with a `card` to draw) for every tool call, `text` pieces
+        of the Markdown answer, then `done` or `error`. Questions are rate limited per client.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChatRequest' }
+      responses:
+        '200':
+          description: The answer as server-sent events.
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429':
+          description: Too many questions; see Retry-After.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: No model configured on this server.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /api/health:
     get:
@@ -892,3 +939,54 @@ components:
         database: { type: string, enum: [ok, down] }
         migration_version: { type: integer }
         greeting: { type: string }
+
+    AssistantStatus:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+        model: { type: string }
+
+    ChatRequest:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          description: The conversation so far, oldest first; the last one is the user's question (up to 2000 characters).
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role: { type: string, enum: [user, assistant] }
+              content: { type: string }
+        context:
+          type: object
+          description: What the user was looking at, so "here" has a meaning.
+          properties:
+            area: { type: string, description: 'Area in the web app form, e.g. bbox:-9.6,35.9,4.4,43.9' }
+            name: { type: string }
+            from: { type: string, description: YYYY-MM }
+            to: { type: string, description: YYYY-MM }
+
+    AssistantEvent:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string, enum: [tool_start, tool_end, text, done, error] }
+        id: { type: string }
+        name: { type: string, description: Tool name }
+        args: { type: object }
+        ok: { type: boolean }
+        error: { type: string }
+        text: { type: string }
+        elapsed_ms: { type: integer }
+        card:
+          type: object
+          properties:
+            kind: { type: string, enum: [calendar, sensors, anomalies, hotspots, region, coverage] }
+            title: { type: string }
+            area: { type: string }
+            from: { type: string }
+            to: { type: string }
+            data: { type: object }

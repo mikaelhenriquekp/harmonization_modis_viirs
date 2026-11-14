@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/nasa-challenge/app/backend/api"
+	"github.com/nasa-challenge/app/backend/internal/assistant"
 	"github.com/nasa-challenge/app/backend/internal/calendar"
 	"github.com/nasa-challenge/app/backend/internal/config"
 	"github.com/nasa-challenge/app/backend/internal/database"
@@ -22,6 +23,7 @@ import (
 	"github.com/nasa-challenge/app/backend/internal/firms"
 	"github.com/nasa-challenge/app/backend/internal/health"
 	"github.com/nasa-challenge/app/backend/internal/hotspots"
+	"github.com/nasa-challenge/app/backend/internal/openai"
 	"github.com/nasa-challenge/app/backend/internal/regions"
 	"github.com/nasa-challenge/app/backend/internal/server"
 	"github.com/nasa-challenge/app/backend/migrations"
@@ -57,9 +59,22 @@ func run() error {
 	}
 
 	healthHandler := health.NewHandler(health.NewService(health.NewPostgresRepository(db), log))
-	calendarHandler := calendar.NewHandler(calendar.NewService(calendar.NewPostgresRepository(db), time.Now), time.Now)
-	regionsHandler := regions.NewHandler(regions.NewService(regions.NewPostgresRepository(db)))
-	mapHandler := firemap.NewHandler(firemap.NewService(firemap.NewPostgresRepository(db)), time.Now)
+	calendarSvc := calendar.NewService(calendar.NewPostgresRepository(db), time.Now)
+	regionsSvc := regions.NewService(regions.NewPostgresRepository(db))
+	mapSvc := firemap.NewService(firemap.NewPostgresRepository(db))
+	calendarHandler := calendar.NewHandler(calendarSvc, time.Now)
+	regionsHandler := regions.NewHandler(regionsSvc)
+	mapHandler := firemap.NewHandler(mapSvc, time.Now)
+	assistantHandler := assistant.NewHandler(nil, "", nil)
+	if cfg.OpenAIKey != "" {
+		llm := openai.NewClient(cfg.OpenAIKey, cfg.OpenAIModel)
+		llm.ReasoningEffort = cfg.OpenAIEffort
+		tools := assistant.NewTools(calendarSvc, mapSvc, regionsSvc, time.Now)
+		assistantHandler = assistant.NewHandler(assistant.NewService(llm, tools, time.Now, log), cfg.OpenAIModel,
+			assistant.NewLimiter(cfg.AskPerHour, cfg.AskBurst, time.Now))
+	} else {
+		log.Warn("OPENAI_API_KEY is not set: Ember, the assistant, is disabled")
+	}
 	hotspotsHandler := hotspots.NewHandler(nil, time.Now)
 	if cfg.MapKey != "" {
 		client := firms.NewClient(cfg.MapKey)
@@ -72,7 +87,7 @@ func run() error {
 	srv := &http.Server{
 		Addr: net.JoinHostPort("", cfg.Port),
 		Handler: server.NewRouter(log, healthHandler, calendarHandler, regionsHandler, mapHandler, hotspotsHandler,
-			docs.NewHandler(api.OpenAPI)),
+			assistantHandler, docs.NewHandler(api.OpenAPI)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      60 * time.Second,

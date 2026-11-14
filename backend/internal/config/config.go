@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,6 +17,11 @@ type Config struct {
 	Port            string
 	DatabaseURL     string
 	MapKey          string // optional: enables raw hotspot downloads
+	OpenAIKey       string // optional: enables Ember, the assistant
+	OpenAIModel     string
+	OpenAIEffort    string // reasoning effort of the model, empty to not send it
+	AskPerHour      int    // questions per client an hour, 0 for no limit
+	AskBurst        int
 	LogLevel        slog.Level
 	ShutdownTimeout time.Duration
 }
@@ -27,11 +33,22 @@ func Load() (Config, error) {
 		Port:            getEnv("PORT", "8080"),
 		DatabaseURL:     os.Getenv("DATABASE_URL"),
 		MapKey:          os.Getenv("FIRMS_MAP_KEY"),
+		OpenAIKey:       os.Getenv("OPENAI_API_KEY"),
+		OpenAIModel:     getEnv("OPENAI_MODEL", "gpt-5.4-mini"),
+		OpenAIEffort:    getEnv("OPENAI_REASONING_EFFORT", "none"),
 		ShutdownTimeout: 10 * time.Second,
 	}
 
+	var err error
 	if cfg.DatabaseURL == "" {
 		return Config{}, errors.New("DATABASE_URL is required")
+	}
+
+	if cfg.AskPerHour, err = getInt("ASSISTANT_PER_HOUR", 20); err != nil {
+		return Config{}, err
+	}
+	if cfg.AskBurst, err = getInt("ASSISTANT_BURST", 5); err != nil {
+		return Config{}, err
 	}
 
 	level, err := parseLogLevel(getEnv("LOG_LEVEL", "info"))
@@ -53,6 +70,18 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func getInt(key string, fallback int) (int, error) {
+	v := getEnv(key, "")
+	if v == "" {
+		return fallback, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("invalid %s %q: must be a whole number >= 0", key, v)
+	}
+	return n, nil
 }
 
 func parseLogLevel(s string) (slog.Level, error) {

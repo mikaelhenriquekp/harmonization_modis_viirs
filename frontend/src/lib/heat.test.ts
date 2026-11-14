@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { anomalyClass, heatColor, heatInk, heatSteps } from './heat'
+import { anomalyClass, heatColor, heatInk, heatSteps, MAP_STEPS, mapBreaks, mapStep } from './heat'
 
 describe('heat', () => {
   it('maps zero to the empty step and spreads classes over the six fire steps', () => {
@@ -24,5 +24,21 @@ describe('heat', () => {
     expect(anomalyClass(0.2)).toBe('below')
     expect(anomalyClass(0.05)).toBe('much_below')
     expect(anomalyClass(null)).toBe('no_history')
+  })
+})
+
+describe('mapStep', () => {
+  it('spreads cells over the steps that read on a dark map', () => {
+    expect(mapStep(0, 1000)).toBe(2)
+    expect(mapStep(1, 1000)).toBe(2)
+    expect(mapStep(1000, 1000)).toBe(6)
+    expect(mapStep(250, 1000)).toBe(4)
+    expect(mapStep(5, 0)).toBe(2)
+  })
+
+  it('puts each legend break where its step starts', () => {
+    const breaks = mapBreaks(1000)
+    expect(breaks[0]).toBe(0)
+    breaks.forEach((b, i) => expect(mapStep(b + 0.001, 1000)).toBe(MAP_STEPS[i]))
   })
 })

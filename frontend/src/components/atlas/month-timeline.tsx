@@ -88,22 +88,32 @@ export function MonthTimeline({ months, value, onChange, className }: MonthTimel
       </button>
 
       <div className="min-w-0 flex-1">
-        <p className="mb-1.5 flex items-baseline gap-2 text-[13px]" aria-hidden>
-          <span className="font-semibold">{formatMonth(current.month)}</span>
-          <span className="num text-soft font-mono">
-            {formatCount(current.hotspots)} hotspots{current.incomplete ? ' so far' : ''}
-          </span>
-          {current.anomaly_pct !== null && (
-            <span
-              className="num font-mono text-[12px]"
-              style={{
-                color: barColor(current) === 'var(--mute)' ? 'var(--mute)' : barColor(current),
-              }}
-            >
-              {formatSignedPct(current.anomaly_pct)} vs usual
+        <div className="mb-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px]">
+          <p className="flex flex-wrap items-baseline gap-x-2" aria-hidden>
+            <span className="font-semibold whitespace-nowrap">{formatMonth(current.month)}</span>
+            <span className="num text-soft font-mono whitespace-nowrap">
+              {formatCount(current.hotspots)} hotspots{current.incomplete ? ' so far' : ''}
             </span>
-          )}
-        </p>
+            {current.anomaly_pct !== null && (
+              <span
+                className="num font-mono text-[12px] whitespace-nowrap"
+                style={{ color: barColor(current) }}
+              >
+                {formatSignedPct(current.anomaly_pct)} vs usual
+              </span>
+            )}
+          </p>
+          <ul className="text-mute ml-auto flex gap-3 text-[11px]" aria-label="Bar colours">
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden className="size-2 rounded-[2px] bg-[var(--anom-much-above)]" />
+              more fire than usual
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden className="size-2 rounded-[2px] bg-[var(--anom-below)]" />
+              less
+            </li>
+          </ul>
+        </div>
         <div
           ref={track}
           role="slider"

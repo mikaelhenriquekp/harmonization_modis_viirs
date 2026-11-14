@@ -44,7 +44,7 @@ export function MapLegend({ layer, period, max, cellDegrees, count, className }:
       {layer === 'fire' && (
         <>
           <figcaption className="text-soft">
-            Hotspots per {cellDegrees ? `${cellDegrees}°` : ''} cell
+            Hotspots per {cellDegrees ? `${cellDegrees * 100} km ` : ''}cell
             {period && <span className="text-mute"> · {period}</span>}
           </figcaption>
           <div className="mt-2 flex h-2.5 overflow-hidden rounded-full" aria-hidden>
@@ -94,8 +94,8 @@ export function MapLegend({ layer, period, max, cellDegrees, count, className }:
       {layer === 'detections' && (
         <>
           <figcaption className="text-soft">
-            {count !== undefined ? `${formatCount(count)} detections` : 'Detections'} by radiative
-            power
+            {count !== undefined ? `${formatCount(count)} detections in view` : 'Detections'} by
+            radiative power
             {period && <span className="text-mute"> · {period}</span>}
           </figcaption>
           <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">

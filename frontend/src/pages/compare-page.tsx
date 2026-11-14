@@ -44,7 +44,7 @@ function PeriodInput({
 }) {
   const id = useId()
   const field =
-    'bg-card-2 border-line hover:border-mute focus-visible:border-saffron h-10 rounded-full border px-3 font-mono text-[13px] transition-colors'
+    'bg-card-2 border-line hover:border-mute focus-visible:border-saffron h-11 rounded-full border px-3 font-mono text-[13px] transition-colors'
   const lastYear = Number(lastMonth.slice(0, 4))
   return (
     <div className="flex items-center gap-2">

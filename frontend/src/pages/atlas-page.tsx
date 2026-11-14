@@ -24,6 +24,7 @@ import { WORLD, type Area } from '@/lib/area'
 import { basemapById } from '@/lib/basemaps'
 import { countryAt } from '@/lib/country'
 import { detailDays, parseDetections } from '@/lib/detections'
+import { lastCompleteMonth } from '@/lib/insights'
 import { formatCoords, formatMonth } from '@/lib/format'
 import {
   dataArea,
@@ -42,7 +43,7 @@ const WHOLE_WORLD = { area: WORLD, name: 'The whole world' }
 const LAYERS: MapLayer[] = ['fire', 'anomalies', 'detections']
 
 /** Room the floating cards take on a wide screen, so the map fits places between them. */
-const INSET: MapInset = { top: 16, left: 372, right: 392, bottom: 150 }
+const INSET: MapInset = { top: 16, left: 372, right: 392, bottom: 180 }
 
 function readLayer(v: string | null): MapLayer {
   return LAYERS.includes(v as MapLayer) ? (v as MapLayer) : 'fire'
@@ -97,7 +98,8 @@ export function AtlasPage() {
   const worldRecord = useCalendar(WORLD, {})
   const cal = record.data?.calendar
   const dataUntil = cal?.data_until ?? coverage.data?.recent_last_day
-  const latest = dataUntil?.slice(0, 7)
+  // open on the last whole month: the current one is still filling up
+  const latest = dataUntil ? lastCompleteMonth(dataUntil) : undefined
   const month = params.get('month') ?? latest
 
   const zoom = viewport?.zoom ?? 2
@@ -111,6 +113,7 @@ export function AtlasPage() {
     { from: month, to: month, resolution: res, area: mapArea },
     shown === 'fire' && !!month && !!viewport,
   )
+  // the anomaly grid follows the zoom only: comparing small cells is noise
   const anomalyRes: Resolution = viewArea.kind === 'world' ? 2 : (Math.max(res, 0.5) as Resolution)
   const anomalies = useAnomalyMap(
     { month, resolution: anomalyRes, area: mapArea },
@@ -159,7 +162,7 @@ export function AtlasPage() {
     // a phone stacks the parts with the map high up; a wide screen floats them over the map
     <div className="relative flex flex-col gap-4 py-4 lg:block lg:h-svh lg:overflow-hidden lg:p-0">
       <div className="contents lg:absolute lg:top-4 lg:left-4 lg:z-[1000] lg:flex lg:w-[340px] lg:flex-col lg:gap-3">
-        <Card className="relative z-[1000] order-1 mx-4 space-y-4 p-5 lg:mx-0">
+        <Card className="relative z-[1010] order-1 mx-4 space-y-4 p-5 lg:mx-0">
           <div>
             <h1 className="text-[26px] leading-none font-bold tracking-[-0.02em]">
               Fire <span className="serif text-[30px] tracking-normal">atlas</span>
@@ -186,9 +189,9 @@ export function AtlasPage() {
           )}
         </Card>
         <Card className="relative z-[1000] order-5 mx-4 space-y-4 p-5 lg:mx-0">
-          {layer !== 'detections' && (
+          {layer === 'fire' && (
             <div>
-              <p className="text-soft mb-1.5 text-[12px]">Grid cell</p>
+              <p className="text-soft mb-1.5 text-[12px]">Cell size</p>
               <GridSwitch
                 value={grid}
                 onChange={(g) => setParam('grid', g === 'auto' ? null : String(g))}
@@ -278,6 +281,7 @@ export function AtlasPage() {
             area={area}
             name={name}
             calendar={cal}
+            month={month}
             error={record.error}
             onRetry={() => void record.refetch()}
             onRadius={(km) => area.kind === 'point' && pick(area.lat, area.lon, km)}

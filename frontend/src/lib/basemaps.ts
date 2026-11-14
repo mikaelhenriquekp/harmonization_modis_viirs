@@ -21,7 +21,7 @@ export interface Basemap {
 export const BASEMAPS: Basemap[] = [
   {
     id: 'reference',
-    label: 'Reference map',
+    label: 'None, plain map',
     sensor: null,
     reads: 'A muted map, so the fire data stands out.',
     layer: null,
@@ -31,8 +31,8 @@ export const BASEMAPS: Basemap[] = [
   },
   {
     id: 'aqua-true',
-    label: 'MODIS true colour',
-    sensor: 'Aqua · MODIS',
+    label: 'True colour',
+    sensor: 'MODIS, Aqua',
     reads: 'Bands 1-4-3, as the eye would see it: smoke plumes are grey-blue, clouds white.',
     layer: 'MODIS_Aqua_CorrectedReflectance_TrueColor',
     format: 'jpg',
@@ -41,8 +41,8 @@ export const BASEMAPS: Basemap[] = [
   },
   {
     id: 'aqua-721',
-    label: 'MODIS false colour 7-2-1',
-    sensor: 'Aqua · MODIS',
+    label: 'Burn scars (shortwave infrared)',
+    sensor: 'MODIS, Aqua',
     reads:
       'Shortwave infrared in red: burn scars look red-brown, vegetation bright green, and the infrared sees through thin smoke.',
     layer: 'MODIS_Aqua_CorrectedReflectance_Bands721',
@@ -52,8 +52,8 @@ export const BASEMAPS: Basemap[] = [
   },
   {
     id: 'snpp-true',
-    label: 'VIIRS true colour',
-    sensor: 'Suomi NPP · VIIRS',
+    label: 'True colour',
+    sensor: 'VIIRS, Suomi NPP',
     reads: 'Bands I1-M4-M3, natural colour from the sensor that replaces MODIS.',
     layer: 'VIIRS_SNPP_CorrectedReflectance_TrueColor',
     format: 'jpg',
@@ -62,8 +62,8 @@ export const BASEMAPS: Basemap[] = [
   },
   {
     id: 'snpp-m11',
-    label: 'VIIRS false colour M11-I2-I1',
-    sensor: 'Suomi NPP · VIIRS',
+    label: 'Burn scars (shortwave infrared)',
+    sensor: 'VIIRS, Suomi NPP',
     reads:
       'The VIIRS match of MODIS 7-2-1: burn scars red-brown, vegetation green, active fire fronts glow orange.',
     layer: 'VIIRS_SNPP_CorrectedReflectance_BandsM11-I2-I1',
@@ -73,8 +73,8 @@ export const BASEMAPS: Basemap[] = [
   },
   {
     id: 'n20-m11',
-    label: 'VIIRS false colour M11-I2-I1',
-    sensor: 'NOAA-20 · VIIRS',
+    label: 'Burn scars (shortwave infrared)',
+    sensor: 'VIIRS, NOAA-20',
     reads: 'The same composite from NOAA-20, the satellite the record continues with.',
     layer: 'VIIRS_NOAA20_CorrectedReflectance_BandsM11-I2-I1',
     format: 'jpg',

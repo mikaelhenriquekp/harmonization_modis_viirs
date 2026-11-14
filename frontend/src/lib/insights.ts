@@ -62,3 +62,20 @@ export function topYears(c: Calendar, n: number): YearStat[] {
     .sort((a, b) => a.rank! - b.rank!)
     .slice(0, n)
 }
+
+/**
+ * The calendar without its unfinished month: comparing half a month against
+ * whole ones makes every month look quieter than it is.
+ */
+export function completeMonths(c: Calendar): Calendar {
+  return { ...c, months: c.months.filter((m) => !m.incomplete) }
+}
+
+/** The last month the data covers in full, from the last day with data (YYYY-MM-DD). */
+export function lastCompleteMonth(dataUntil: string): string {
+  const [y, m, d] = dataUntil.split('-').map(Number)
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate()
+  if (d >= lastDay) return dataUntil.slice(0, 7)
+  const prev = new Date(Date.UTC(y, m - 2, 1))
+  return prev.toISOString().slice(0, 7)
+}

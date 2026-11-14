@@ -6,7 +6,7 @@ import { BigNumber, Delta } from '@/components/card'
 import { Skeleton } from '@/components/state'
 import { useCountry } from '@/hooks/use-country'
 import { formatCoords, formatCount, formatMonth, formatSignedPct, monthName } from '@/lib/format'
-import { monthVsLastYear, yearSoFar } from '@/lib/insights'
+import { completeMonths, monthVsLastYear, yearSoFar } from '@/lib/insights'
 
 interface Hot {
   lat: number
@@ -33,7 +33,15 @@ function hottest(anomalies: AnomalyResponse | undefined, n: number): Hot[] {
   }))
 }
 
-function HotRow({ hot, onPick }: { hot: Hot; onPick: (lat: number, lon: number) => void }) {
+function HotRow({
+  hot,
+  rank,
+  onPick,
+}: {
+  hot: Hot
+  rank: number
+  onPick: (lat: number, lon: number) => void
+}) {
   const country = useCountry({ lat: hot.lat, lon: hot.lon })
   const where = country.data?.name ?? (country.isPending ? '…' : formatCoords(hot.lat, hot.lon))
   return (
@@ -41,9 +49,11 @@ function HotRow({ hot, onPick }: { hot: Hot; onPick: (lat: number, lon: number) 
       <button
         type="button"
         onClick={() => onPick(hot.lat, hot.lon)}
-        className="group -mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-[12px] px-2 py-2 text-left transition-colors hover:bg-white/5 active:scale-[0.99]"
+        className="group -mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center gap-3 rounded-[12px] px-2 py-2 text-left transition-colors hover:bg-white/5 active:scale-[0.99]"
       >
-        <span aria-hidden className="bg-tone-critical size-2 shrink-0 rounded-full" />
+        <span aria-hidden className="text-mute num w-3 shrink-0 font-mono text-[12px]">
+          {rank}
+        </span>
         <span className="min-w-0 flex-1 truncate text-[14px]">{where}</span>
         <span className="num text-soft font-mono text-[12px]">
           {formatCount(hot.projected)}
@@ -70,8 +80,10 @@ export function WorldPanel({
   anomalies: AnomalyResponse | undefined
   onPick: (lat: number, lon: number) => void
 }) {
-  const ys = cal ? yearSoFar(cal) : null
-  const month = cal ? monthVsLastYear(cal) : null
+  // whole months only: half a month against whole ones always looks quiet
+  const done = useMemo(() => (cal ? completeMonths(cal) : null), [cal])
+  const ys = done ? yearSoFar(done) : null
+  const month = done ? monthVsLastYear(done) : null
   const hot = useMemo(() => hottest(anomalies, 5), [anomalies])
   const unusual = anomalies
     ? (anomalies.counts.much_above ?? 0) + (anomalies.counts.above ?? 0)
@@ -80,9 +92,12 @@ export function WorldPanel({
   return (
     <section aria-label="The whole world" className="flex flex-col gap-6">
       <div>
-        <h2 className="text-soft text-[13px] font-normal">
-          The whole world{ys ? `, ${ys.year} so far` : ''}
-        </h2>
+        <h2 className="text-[18px] leading-tight font-semibold">The whole world</h2>
+        <p className="text-soft mt-0.5 text-[13px]">
+          {ys
+            ? `Hotspots, ${monthName(1, 'short')}–${monthName(ys.months, 'short')} ${ys.year}`
+            : 'Hotspots this year'}
+        </p>
         {ys ? (
           <>
             <div className="mt-1 flex items-baseline gap-3">
@@ -90,7 +105,7 @@ export function WorldPanel({
               <Delta pct={ys.changePct} className="text-[13px]" />
             </div>
             <p className="text-mute text-[12px]">
-              hotspots, against an average {monthName(1, 'short')}–{monthName(ys.months, 'short')}
+              against the average of the same months since 2002
             </p>
           </>
         ) : (
@@ -101,7 +116,7 @@ export function WorldPanel({
       <dl className="divide-line grid grid-cols-2 divide-x">
         <div className="pr-4">
           <dt className="text-mute text-[12px]">
-            {month ? `${formatMonth(month.month, 'short')} so far` : 'This month'}
+            {month ? formatMonth(month.month) : 'Last month'}
           </dt>
           <dd className="mt-1 flex items-baseline gap-2">
             <span className="num font-mono text-[16px] font-semibold">
@@ -110,17 +125,17 @@ export function WorldPanel({
             {month && <Delta pct={month.changePct} />}
           </dd>
           {month && month.changePct !== null && (
-            <dd className="text-mute text-[11px]">vs last year</dd>
+            <dd className="text-mute text-[12px]">vs last year</dd>
           )}
         </div>
         <div className="pl-4">
-          <dt className="text-mute text-[12px]">Cells above normal</dt>
+          <dt className="text-mute text-[12px]">Places above normal now</dt>
           <dd className="num mt-1 font-mono text-[16px] font-semibold">
             {unusual !== null ? formatCount(unusual) : '…'}
           </dd>
           {anomalies && (
-            <dd className="text-mute text-[11px]">
-              of {formatCount(anomalies.cells.length)} burning
+            <dd className="text-mute text-[12px]">
+              of {formatCount(anomalies.cells.length)} burning 2° cells
             </dd>
           )}
         </div>
@@ -134,8 +149,8 @@ export function WorldPanel({
         {anomalies ? (
           hot.length > 0 ? (
             <ul className="mt-2">
-              {hot.map((h) => (
-                <HotRow key={`${h.lat},${h.lon}`} hot={h} onPick={onPick} />
+              {hot.map((h, i) => (
+                <HotRow key={`${h.lat},${h.lon}`} hot={h} rank={i + 1} onPick={onPick} />
               ))}
             </ul>
           ) : (

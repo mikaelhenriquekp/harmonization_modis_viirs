@@ -9,7 +9,8 @@ import { ErrorState, Skeleton } from '@/components/state'
 import { areaToSearch, type Area } from '@/lib/area'
 import { askLink } from '@/lib/ask'
 import { formatCoords, formatCount, formatMonth, monthName } from '@/lib/format'
-import { yearSoFar } from '@/lib/insights'
+import { anomalyClass } from '@/lib/heat'
+import { completeMonths, yearSoFar } from '@/lib/insights'
 import { statusMeta } from '@/lib/status'
 import { cn } from '@/lib/utils'
 
@@ -20,6 +21,8 @@ interface PlacePanelProps {
   name: string
   /** The record of the area, while it loads undefined. */
   calendar: Calendar | undefined
+  /** The month the map shows, YYYY-MM; the panel speaks about the same one. */
+  month?: string
   error?: Error | null
   onRetry?: () => void
   onRadius?: (km: number) => void
@@ -44,7 +47,7 @@ function SeasonBars({ cal }: { cal: Calendar }) {
             className="flex-1 rounded-t-[3px]"
             style={{
               height: `${Math.max(4, (v / max) * 100)}%`,
-              background: i + 1 === cal.peak.month_of_year ? 'var(--saffron)' : 'var(--coral)',
+              background: i + 1 === cal.peak.month_of_year ? 'var(--coral)' : 'var(--heat-3)',
               opacity: v ? 0.9 : 0.2,
             }}
           />
@@ -84,7 +87,7 @@ function YearBars({ cal }: { cal: Calendar }) {
               width={7}
               y={48 - h}
               height={h}
-              fill={y.year === best?.year ? 'var(--saffron)' : 'var(--garnet)'}
+              fill={y.year === best?.year ? 'var(--coral)' : 'var(--heat-3)'}
               opacity={y.complete ? 0.95 : 0.45}
             />
           )
@@ -103,6 +106,7 @@ export function PlacePanel({
   area,
   name,
   calendar: cal,
+  month,
   error,
   onRetry,
   onRadius,
@@ -112,9 +116,9 @@ export function PlacePanel({
   const search = `?${new URLSearchParams({ area: areaToSearch(area), name }).toString()}`
   const total = cal ? cal.years.reduce((s, y) => s + y.hotspots, 0) : 0
   const lastFire = cal ? [...cal.months].reverse().find((m) => m.hotspots > 0) : undefined
-  const ys = cal ? yearSoFar(cal) : null
-  const current = cal?.current
-  const meta = current ? statusMeta(current.status) : null
+  const ys = cal ? yearSoFar(completeMonths(cal)) : null
+  const shown = cal?.months.find((m) => m.month === month) ?? cal?.months.at(-1)
+  const meta = shown ? statusMeta(anomalyClass(shown.percentile)) : null
   const hasSeason = !!cal && cal.climatology.some((c) => (c.median ?? 0) > 0)
 
   return (
@@ -189,10 +193,14 @@ export function PlacePanel({
             <div className="min-w-0 flex-1">
               <p className="text-soft text-[12px]">Hotspots since {cal.from.slice(0, 4)}</p>
               <BigNumber className="text-[34px] leading-tight">{formatCount(total)}</BigNumber>
-              {current && meta && (
+              {shown && meta && (
                 <p className="mt-1 text-[14px] leading-snug">
-                  {formatMonth(current.month)} is <strong>{meta.phrase}</strong>
-                  {current.median !== null && <> (usually {formatCount(current.median)})</>}.
+                  {formatMonth(shown.month)} {shown.incomplete ? 'is so far' : 'was'}{' '}
+                  <strong>{meta.phrase}</strong>: {formatCount(shown.hotspots)} hotspots
+                  {shown.median_same_month !== null && (
+                    <>, usually {formatCount(Math.round(shown.median_same_month))}</>
+                  )}
+                  .
                 </p>
               )}
             </div>

@@ -60,8 +60,8 @@ const LAYERS: Option<MapLayer>[] = [
 ]
 
 const GRID: Option<ResolutionChoice>[] = [
-  { value: 'auto', label: 'Auto', title: 'Finer as you zoom in' },
-  ...RESOLUTIONS.map((r) => ({ value: r, label: `${r}°` })),
+  { value: 'auto', label: 'Auto', title: 'Finer cells as you zoom in' },
+  ...RESOLUTIONS.map((r) => ({ value: r, label: `${r * 100} km`, title: `${r}° cells` })),
 ]
 
 export function LayerSwitch({
@@ -105,11 +105,11 @@ export function ImageryPicker({
         id={id}
         value={value.id}
         onChange={(e) => onChange(BASEMAPS.find((b) => b.id === e.target.value) ?? BASEMAPS[0])}
-        className="bg-card-2 border-line hover:border-mute focus-visible:border-saffron h-10 w-full rounded-full border px-3 text-[13px] transition-colors"
+        className="bg-card-2 border-line hover:border-mute focus-visible:border-saffron h-11 w-full rounded-full border px-3 text-[13px] transition-colors"
       >
         {BASEMAPS.map((b) => (
           <option key={b.id} value={b.id}>
-            {b.sensor ? `${b.label} · ${b.sensor}` : 'None, plain map'}
+            {b.sensor ? `${b.label} · ${b.sensor}` : b.label}
           </option>
         ))}
       </select>

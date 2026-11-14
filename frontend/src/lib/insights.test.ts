@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 
 import { calendarFixture } from '@/test/fixtures'
 
-import { lastMonths, monthVsLastYear, peakShare, topYears, yearSoFar } from './insights'
+import {
+  completeMonths,
+  lastCompleteMonth,
+  lastMonths,
+  monthVsLastYear,
+  peakShare,
+  topYears,
+  yearSoFar,
+} from './insights'
 
 describe('insights', () => {
   it('compares this month with the same month last year', () => {
@@ -38,5 +46,19 @@ describe('insights', () => {
 
   it('ranks the complete years', () => {
     expect(topYears(calendarFixture(), 2).map((y) => y.year)).toEqual([2012, 2011])
+  })
+})
+
+describe('complete months', () => {
+  it('leaves out the unfinished month, so it is not compared with whole ones', () => {
+    const c = completeMonths(calendarFixture())
+    expect(c.months.at(-1)?.month).toBe('2013-02')
+    expect(monthVsLastYear(c)?.month).toBe('2013-02')
+  })
+
+  it('finds the last month the data covers in full', () => {
+    expect(lastCompleteMonth('2026-11-14')).toBe('2026-10')
+    expect(lastCompleteMonth('2026-10-31')).toBe('2026-10')
+    expect(lastCompleteMonth('2026-01-03')).toBe('2025-12')
   })
 })

@@ -24,7 +24,7 @@ func NewRouter(log *slog.Logger, features ...RouteRegistrar) http.Handler {
 	r.Use(middleware.RequestID)
 	r.Use(requestLogger(log))
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(30 * time.Second))
+	r.Use(timeoutExcept(30*time.Second, streamingPaths))
 
 	r.Route("/api", func(api chi.Router) {
 		for _, f := range features {
@@ -37,6 +37,24 @@ func NewRouter(log *slog.Logger, features ...RouteRegistrar) http.Handler {
 	})
 
 	return r
+}
+
+// streamingPaths answer for longer than the request timeout and bound
+// themselves (the assistant streams its answer).
+var streamingPaths = map[string]bool{"/api/assistant/chat": true}
+
+func timeoutExcept(d time.Duration, skip map[string]bool) func(http.Handler) http.Handler {
+	timeout := middleware.Timeout(d)
+	return func(next http.Handler) http.Handler {
+		limited := timeout(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if skip[r.URL.Path] {
+				next.ServeHTTP(w, r)
+				return
+			}
+			limited.ServeHTTP(w, r)
+		})
+	}
 }
 
 func requestLogger(log *slog.Logger) func(http.Handler) http.Handler {

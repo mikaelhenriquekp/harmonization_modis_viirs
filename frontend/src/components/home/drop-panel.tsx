@@ -1,4 +1,4 @@
-import { ArrowRight, Download, Flame, X } from 'lucide-react'
+import { ArrowRight, Download, Flame, Sparkles, X } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { calendarCsvUrl } from '@/api/calendar'
@@ -7,6 +7,7 @@ import { Mascot } from '@/components/mascot'
 import { ErrorState, Skeleton } from '@/components/state'
 import { useCalendar } from '@/hooks/use-fire'
 import { areaToSearch, type Area } from '@/lib/area'
+import { askLink } from '@/lib/ask'
 import { formatCount, formatMonth, monthName } from '@/lib/format'
 import { yearSoFar } from '@/lib/insights'
 import { statusMeta } from '@/lib/status'
@@ -198,6 +199,17 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
           className="bg-saffron text-on-accent flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-[14px] font-semibold hover:brightness-110"
         >
           Open the analysis <ArrowRight className="size-[18px]" />
+        </Link>
+        <Link
+          to={askLink(
+            { area, name },
+            `What does the fire record say about ${name}? Is this year unusual?`,
+          )}
+          aria-label="Ask Ember about this place"
+          title="Ask Ember"
+          className="ember-edge text-saffron grid size-11 shrink-0 place-items-center rounded-full bg-[rgb(240_192_72/0.1)] hover:bg-[rgb(240_192_72/0.18)]"
+        >
+          <Sparkles className="size-[18px]" />
         </Link>
         <a
           href={calendarCsvUrl(area, {})}

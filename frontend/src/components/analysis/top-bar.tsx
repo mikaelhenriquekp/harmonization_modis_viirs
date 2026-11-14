@@ -1,10 +1,11 @@
-import { CalendarRange, Download, MapPin, Pencil } from 'lucide-react'
+import { CalendarRange, Download, MapPin, Pencil, Sparkles } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 
 import type { MonthRange } from '@/api/calendar'
 import { PeriodPicker } from '@/components/explore/period-picker'
 import type { Area } from '@/lib/area'
+import { askLink } from '@/lib/ask'
 import { formatCount, formatMonth } from '@/lib/format'
 
 function sizeKm2(cells: number, south: number, north: number): number {
@@ -116,9 +117,16 @@ export function TopBar({
           </p>
         )}
         <Link
+          to={askLink({ area, name, from: range.from, to: range.to })}
+          aria-label={`Ask Ember about ${name}`}
+          className="ember-edge text-saffron ml-auto flex size-10 shrink-0 items-center justify-center gap-2 rounded-full bg-[rgb(240_192_72/0.1)] text-[14px] font-semibold hover:bg-[rgb(240_192_72/0.18)] sm:size-auto sm:px-4 sm:py-2"
+        >
+          <Sparkles className="size-4" /> <span className="hidden sm:inline">Ask Ember</span>
+        </Link>
+        <Link
           to={{ search, hash: '#downloads' }}
           aria-label="Downloads"
-          className="bg-saffron text-on-accent ml-auto flex size-10 shrink-0 items-center justify-center gap-2 rounded-full sm:size-auto sm:px-4 sm:py-2 text-[14px] font-semibold hover:brightness-110"
+          className="bg-saffron text-on-accent flex size-10 shrink-0 items-center justify-center gap-2 rounded-full sm:size-auto sm:px-4 sm:py-2 text-[14px] font-semibold hover:brightness-110"
         >
           <Download className="size-4" /> <span className="hidden sm:inline">Download</span>
         </Link>

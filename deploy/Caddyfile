@@ -1,6 +1,3 @@
-# Caddy terminates TLS (automatic Let's Encrypt certificates) and routes:
-#   /api/*  -> backend (api:8080)
-#   *       -> frontend SPA (web:80)
 {
 	email {$ACME_EMAIL}
 }

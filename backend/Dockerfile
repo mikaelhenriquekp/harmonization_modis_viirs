@@ -1,4 +1,3 @@
-# Production image: static binary on distroless, running as non-root.
 FROM golang:1.26-alpine AS build
 WORKDIR /src
 

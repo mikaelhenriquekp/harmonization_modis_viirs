@@ -207,6 +207,15 @@ function SyncView({ view, onView }: { view?: MapView; onView?: (v: MapView) => v
   return null
 }
 
+/** Leaflet's credit without the flag, so the line stays short. */
+function ShortPrefix() {
+  const map = useMap()
+  useEffect(() => {
+    map.attributionControl?.setPrefix('<a href="https://leafletjs.com">Leaflet</a>')
+  }, [map])
+  return null
+}
+
 function ZoomButtons({ position }: { position: L.ControlPosition }) {
   const map = useMap()
   useEffect(() => {
@@ -411,6 +420,7 @@ export function AreaMap({
       attributionControl
       preferCanvas
     >
+      <ShortPrefix />
       <TileLayer url={TILES} attribution={TILE_ATTRIBUTION} maxZoom={16} />
       {imagery && (
         <TileLayer

@@ -266,7 +266,7 @@ export function AtlasPage() {
         )}
       </Card>
 
-      <Card className="relative z-[1000] order-4 mx-4 p-6 lg:absolute lg:top-4 lg:right-4 lg:mx-0 lg:max-h-[calc(100svh-2rem)] lg:w-[360px] lg:overflow-y-auto">
+      <Card className="relative z-[1000] order-4 mx-4 p-6 lg:absolute lg:top-4 lg:right-4 lg:mx-0 lg:max-h-[calc(100svh-11rem)] lg:w-[360px] lg:overflow-y-auto">
         {world ? (
           <WorldPanel
             calendar={worldRecord.data?.calendar}

@@ -1,6 +1,6 @@
 {
-  "name": "Paparajote Lunar",
-  "short_name": "Paparajote",
+  "name": "Ctrl + Fire",
+  "short_name": "Ctrl + Fire",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -27,7 +27,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#0b1640",
-  "background_color": "#0b1640",
+  "theme_color": "#100d0f",
+  "background_color": "#100d0f",
   "display": "standalone"
 }

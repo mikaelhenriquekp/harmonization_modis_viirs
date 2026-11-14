@@ -1,4 +1,13 @@
-import { CalendarDays, Download, Earth, FlaskConical, Info, Satellite, Waves } from 'lucide-react'
+import {
+  CalendarDays,
+  Download,
+  Earth,
+  FlaskConical,
+  Info,
+  Satellite,
+  Sparkles,
+  Waves,
+} from 'lucide-react'
 import { useEffect, type ComponentType } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 
@@ -16,6 +25,7 @@ interface NavItem {
 /** The rail of the wireframe: the globe, then the sections of the analysis. */
 const NAV: NavItem[] = [
   { to: '/', label: 'Globe', icon: Earth },
+  { to: '/ask', label: 'Ask', icon: Sparkles },
   { to: '/analysis#calendar', label: 'Calendar', icon: CalendarDays, section: 'calendar' },
   { to: '/analysis#anomalies', label: 'Anomalies', icon: Waves, section: 'anomalies' },
   { to: '/analysis#sensors', label: 'Sensors', icon: Satellite, section: 'sensors' },
@@ -27,6 +37,7 @@ function useActiveKey(): string {
   const { pathname, hash } = useLocation()
   if (pathname === '/analysis') return hash.slice(1) || 'calendar'
   if (pathname === '/method') return 'method'
+  if (pathname === '/ask') return 'ask'
   if (pathname === '/about') return 'about'
   return pathname === '/' ? 'area' : ''
 }

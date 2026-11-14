@@ -13,6 +13,10 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <HomePage /> },
       { path: '/analysis', element: <AnalysisPage /> },
+      {
+        path: '/ask',
+        lazy: () => import('@/pages/ask-page').then((m) => ({ Component: m.AskPage })),
+      },
       { path: '/method', element: <MethodPage /> },
       { path: '/about', element: <AboutPage /> },
       { path: '*', element: <NotFoundPage /> },

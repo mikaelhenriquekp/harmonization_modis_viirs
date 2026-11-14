@@ -216,3 +216,319 @@
   color: var(--bone);
   border-color: var(--line);
 }
+
+/* Ember, the assistant: the /ask page's effects */
+@property --ember-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@layer components {
+  @keyframes ember-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes ember-spin-angle {
+    to {
+      --ember-angle: 360deg;
+    }
+  }
+  @keyframes ember-breathe {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.75;
+    }
+    50% {
+      transform: scale(1.08);
+      opacity: 1;
+    }
+  }
+  @keyframes ember-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.98);
+      filter: blur(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+  @keyframes ember-shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+  @keyframes ember-caret {
+    50% {
+      opacity: 0;
+    }
+  }
+  @keyframes ember-float {
+    0%,
+    100% {
+      transform: translateY(0) rotate(-2deg);
+    }
+    50% {
+      transform: translateY(-10px) rotate(2deg);
+    }
+  }
+  @keyframes ember-scan {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  /* the slow fire aurora behind the hero */
+  .ember-aurora {
+    background: conic-gradient(
+      from 0deg,
+      rgb(194 59 84 / 0.55),
+      rgb(238 143 90 / 0.45),
+      rgb(240 192 72 / 0.5),
+      rgb(143 166 186 / 0.18),
+      rgb(194 59 84 / 0.55)
+    );
+    filter: blur(70px);
+    animation: ember-spin 22s linear infinite;
+  }
+  .ember-breathe {
+    animation: ember-breathe 4s ease-in-out infinite;
+  }
+  .ember-float {
+    animation: ember-float 6s ease-in-out infinite;
+  }
+  .ember-orbit {
+    animation: ember-spin var(--orbit-duration, 18s) linear infinite;
+  }
+  .ember-orbit-reverse {
+    animation: ember-spin var(--orbit-duration, 18s) linear infinite reverse;
+  }
+  .ember-rise {
+    animation: ember-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  /* "Ask the fire anything": a burning gradient in the letters */
+  .ember-gradient-text {
+    background: linear-gradient(
+      100deg,
+      var(--bone) 0%,
+      var(--saffron) 30%,
+      var(--coral) 50%,
+      var(--garnet) 65%,
+      var(--saffron) 80%,
+      var(--bone) 100%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: ember-shimmer 9s linear infinite;
+  }
+
+  /* running tool: a light sweeping over its label */
+  .ember-shimmer-text {
+    background: linear-gradient(
+      90deg,
+      var(--soft) 0%,
+      var(--bone) 45%,
+      var(--saffron) 50%,
+      var(--soft) 60%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: ember-shimmer 1.6s linear infinite;
+  }
+
+  .ember-caret-last > :last-child:not(ul, ol, table, div)::after,
+  .ember-caret-last > :is(ul, ol):last-child > li:last-child::after {
+    content: '';
+    display: inline-block;
+    width: 0.55em;
+    height: 1.05em;
+    margin-left: 2px;
+    vertical-align: -0.15em;
+    border-radius: 2px;
+    background: var(--saffron);
+    box-shadow: 0 0 12px var(--saffron);
+    animation: ember-caret 0.9s steps(1) infinite;
+  }
+
+  /* a rotating fire edge, for the composer and the live answer */
+  .ember-edge {
+    position: relative;
+    isolation: isolate;
+  }
+  .ember-edge::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from var(--ember-angle),
+      transparent 0deg,
+      var(--garnet) 60deg,
+      var(--coral) 120deg,
+      var(--saffron) 160deg,
+      transparent 220deg,
+      transparent 360deg
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: var(--edge-opacity, 0.35);
+    transition: opacity 0.4s;
+    animation: ember-spin-angle 4s linear infinite;
+  }
+  .ember-edge[data-hot='true']::before {
+    --edge-opacity: 1;
+    animation-duration: 1.6s;
+  }
+  .ember-edge::after {
+    content: '';
+    position: absolute;
+    inset: -14px;
+    z-index: -2;
+    border-radius: inherit;
+    background: radial-gradient(closest-side, rgb(238 143 90 / 0.22), transparent);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  .ember-edge[data-hot='true']::after,
+  .ember-edge:focus-within::after {
+    opacity: 1;
+  }
+  .ember-scan {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  .ember-scan::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgb(240 192 72 / 0.16), transparent);
+    animation: ember-scan 1.4s ease-in-out infinite;
+  }
+
+  /* Ember's Markdown */
+  .ember-prose {
+    font-size: 15.5px;
+    line-height: 1.65;
+    color: var(--bone);
+  }
+  .ember-prose > * + * {
+    margin-top: 0.75em;
+  }
+  .ember-prose strong {
+    color: var(--saffron);
+    font-weight: 650;
+  }
+  .ember-prose em {
+    color: var(--soft);
+  }
+  .ember-prose ul,
+  .ember-prose ol {
+    padding-left: 1.25em;
+  }
+  .ember-prose ul {
+    list-style: none;
+  }
+  .ember-prose ul > li {
+    position: relative;
+  }
+  .ember-prose ul > li::before {
+    content: '';
+    position: absolute;
+    left: -1em;
+    top: 0.62em;
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+    transform: rotate(45deg);
+    background: linear-gradient(135deg, var(--saffron), var(--garnet));
+  }
+  .ember-prose ol {
+    list-style: decimal;
+  }
+  .ember-prose li + li,
+  .ember-prose li > ul {
+    margin-top: 0.35em;
+  }
+  .ember-prose a {
+    color: var(--saffron);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .ember-prose code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: var(--card-2);
+    border-radius: 6px;
+    padding: 0.1em 0.35em;
+  }
+  .ember-prose h1,
+  .ember-prose h2,
+  .ember-prose h3 {
+    font-weight: 650;
+    font-size: 1.05em;
+    letter-spacing: -0.01em;
+  }
+  .ember-prose table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .ember-prose th {
+    text-align: left;
+    color: var(--soft);
+    font-weight: 500;
+    border-bottom: 1px solid var(--line);
+    padding: 6px 10px 6px 0;
+  }
+  .ember-prose td {
+    border-bottom: 1px solid rgb(47 39 43 / 0.6);
+    padding: 6px 10px 6px 0;
+  }
+  .ember-prose blockquote {
+    border-left: 2px solid var(--garnet);
+    padding-left: 0.9em;
+    color: var(--soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ember-aurora,
+  .ember-breathe,
+  .ember-float,
+  .ember-orbit,
+  .ember-orbit-reverse,
+  .ember-rise,
+  .ember-gradient-text,
+  .ember-shimmer-text,
+  .ember-caret-last *::after,
+  .ember-edge::before,
+  .ember-scan::after {
+    animation: none !important;
+  }
+}

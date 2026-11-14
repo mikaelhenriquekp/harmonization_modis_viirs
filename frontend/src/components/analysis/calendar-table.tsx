@@ -55,7 +55,7 @@ export function CalendarTable({ calendar }: { calendar: Calendar }) {
               className={cn(
                 'flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold has-[:focus-visible]:outline-2',
                 mode === v
-                  ? 'border-coral bg-coral text-[#100d0f]'
+                  ? 'border-coral bg-coral text-on-accent'
                   : 'border-line hover:bg-white/5',
               )}
             >
@@ -166,10 +166,8 @@ export function CalendarTable({ calendar }: { calendar: Calendar }) {
           </tbody>
         </table>
       </div>
-      <p className="text-mute mt-4 font-mono text-[11px] leading-relaxed">
-        Unit: harmonized hotspots (VIIRS 375 m equivalent). Hatched months, up to January 2012, are
-        rebuilt from MODIS Aqua. Color breaks use quantiles for this area; a corner mark flags
-        months far above their usual value.
+      <p className="text-mute mt-4 text-[12px]">
+        Counted in VIIRS 375 m hotspots. Color steps are set for this area.
       </p>
     </div>
   )
@@ -178,14 +176,17 @@ export function CalendarTable({ calendar }: { calendar: Calendar }) {
 function Legend({ calendar, mode }: { calendar: Calendar; mode: Mode }) {
   if (mode === 'anomaly') {
     return (
-      <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" aria-label="Legend">
-        {STATUS_ORDER.filter((s) => s !== 'no_history').map((s) => (
-          <li key={s} className="text-soft flex items-center gap-1.5">
-            <span className="size-3 rounded-[3px]" style={{ background: ANOMALY_COLOR[s] }} />
-            {statusMeta(s).label.replace(' normal', '').replace('Normal', 'Usual')}
-          </li>
-        ))}
-      </ul>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+        <ul className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="Legend">
+          {STATUS_ORDER.filter((s) => s !== 'no_history').map((s) => (
+            <li key={s} className="text-soft flex items-center gap-1.5">
+              <span className="size-3 rounded-[3px]" style={{ background: ANOMALY_COLOR[s] }} />
+              {statusMeta(s).label.replace(' normal', '').replace('Normal', 'Usual')}
+            </li>
+          ))}
+        </ul>
+        <LegendExtras />
+      </div>
     )
   }
   const { breaks, colors } = calendar.scale
@@ -193,33 +194,54 @@ function Legend({ calendar, mode }: { calendar: Calendar; mode: Mode }) {
   return (
     <div className="flex flex-wrap items-center gap-4 text-[11px]">
       <div className="flex items-center gap-2">
-        <span className="text-soft">Hotspots / month</span>
-        <ul className="flex" aria-label="Color legend">
-          <li className="flex flex-col items-center gap-0.5">
-            <span className="h-2.5 w-7 rounded-l-[3px]" style={{ background: heatColor(0, n) }} />
-            <span className="text-mute font-mono text-[9px]">0</span>
+        <span className="text-soft">Fewer</span>
+        <ul className="flex" aria-label="Color legend, fewer to more hotspots">
+          <li title="No hotspots">
+            <span
+              className="block h-2.5 w-6 rounded-l-[3px]"
+              style={{ background: heatColor(0, n) }}
+            />
           </li>
           {Array.from({ length: n }, (_, i) => (
-            <li key={i} className="flex flex-col items-center gap-0.5">
+            <li
+              key={i}
+              title={
+                breaks[i] !== undefined
+                  ? `Up to ${formatCount(breaks[i])}`
+                  : `More than ${formatCount(breaks[i - 1] ?? 0)}`
+              }
+            >
               <span
-                className={cn('h-2.5 w-7', i === n - 1 && 'rounded-r-[3px]')}
+                className={cn('block h-2.5 w-6', i === n - 1 && 'rounded-r-[3px]')}
                 style={{ background: heatColor(i + 1, n) }}
               />
-              <span className="text-mute font-mono text-[9px]">
-                {breaks[i] !== undefined
-                  ? `≤${formatCount(breaks[i])}`
-                  : `>${formatCount(breaks[i - 1] ?? 0)}`}
-              </span>
             </li>
           ))}
         </ul>
+        <span className="text-soft">More</span>
       </div>
-      <span className="text-soft tri relative pr-3" style={{ color: 'var(--garnet)' }}>
-        <span className="text-soft">Far above usual</span>
+      <LegendExtras far />
+    </div>
+  )
+}
+
+/** Marks shared by both modes: rebuilt months, far above usual, the current month. */
+function LegendExtras({ far = false }: { far?: boolean }) {
+  return (
+    <>
+      <span className="text-soft flex items-center gap-1.5">
+        <span className="hatch size-3 rounded-[3px]" style={{ backgroundColor: 'var(--heat-3)' }} />{' '}
+        Rebuilt from MODIS
       </span>
+      {far && (
+        <span className="text-soft flex items-center gap-1.5">
+          <span className="tri bg-card-2 relative size-3 rounded-[3px] text-[var(--bone)]" /> Far
+          above usual
+        </span>
+      )}
       <span className="text-soft flex items-center gap-1.5">
         <span className="outline-saffron size-3 rounded-[3px] outline-2" /> Current month
       </span>
-    </div>
+    </>
   )
 }

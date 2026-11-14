@@ -6,6 +6,7 @@ import { hotspotsCsvUrl } from '@/api/hotspots'
 import { Card } from '@/components/card'
 import { useHotspots } from '@/hooks/use-fire'
 import { areaToParams, type Area } from '@/lib/area'
+import { formatCount } from '@/lib/format'
 
 const DAY = 86_400_000
 
@@ -31,7 +32,7 @@ function Row({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-semibold">{title}</p>
-        <p className="text-mute truncate font-mono text-[11px]">{sub}</p>
+        <p className="text-mute text-[12px] leading-snug">{sub}</p>
       </div>
       {action}
     </li>
@@ -43,7 +44,7 @@ function CsvButton({ href, label = 'CSV' }: { href: string; label?: string }) {
     <a
       href={href}
       download
-      className="bg-saffron flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold text-[#100d0f]"
+      className="bg-saffron flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold text-on-accent"
     >
       <Download className="size-4" /> {label}
     </a>
@@ -54,12 +55,10 @@ function CsvButton({ href, label = 'CSV' }: { href: string; label?: string }) {
 export function Downloads({
   area,
   range,
-  name,
   dataUntil,
 }: {
   area: Area
   range: MonthRange
-  name: string
   dataUntil: string
 }) {
   const [to, setTo] = useState(dataUntil)
@@ -76,13 +75,13 @@ export function Downloads({
         <ul>
           <Row
             icon={<FileSpreadsheet className="size-5" />}
-            title="Detected hotspots"
-            sub="each detection at 375 m / 1 km, from NASA FIRMS"
+            title="Hotspot detections"
+            sub="Every satellite detection in the dates below, from NASA FIRMS"
             action={
               ok ? (
                 <CsvButton href={hotspotsCsvUrl(area, from, to)} />
               ) : (
-                <span className="text-garnet text-[12px]">≤ 366 days</span>
+                <span className="text-coral shrink-0 text-[12px]">Max. 366 days</span>
               )
             }
           />
@@ -112,14 +111,14 @@ export function Downloads({
           </li>
           <Row
             icon={<CalendarDays className="size-5" />}
-            title="Monthly calendar + anomalies"
-            sub={`${name}: hotspots, energy, source, usual value, anomaly`}
+            title="Monthly record"
+            sub="One row per month, with its usual value and anomaly"
             action={<CsvButton href={calendarCsvUrl(area, range)} />}
           />
           <Row
             icon={<Code2 className="size-5" />}
-            title="Reproducible query"
-            sub="the same numbers from the open API"
+            title="API link"
+            sub="The same monthly numbers as JSON"
             action={
               <button
                 type="button"
@@ -128,7 +127,7 @@ export function Downloads({
                 }}
                 className="border-line flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-[13px] font-semibold hover:bg-white/5"
               >
-                <Copy className="size-4" /> {copied ? 'Copied' : 'Copy'}
+                <Copy className="size-4" /> {copied ? 'Copied' : 'Copy link'}
               </button>
             }
           />
@@ -140,7 +139,9 @@ export function Downloads({
             hotspots_{addDays(dataUntil, -6)}_{dataUntil}.csv, preview
           </p>
           <p className="text-mute shrink-0 font-mono text-[11px]">
-            {preview.data ? `${Math.min(5, preview.data.count)} of ${preview.data.count} rows` : ''}
+            {preview.data
+              ? `${Math.min(5, preview.data.count)} of ${formatCount(preview.data.count)} rows`
+              : ''}
           </p>
         </div>
         {preview.isError ? (
@@ -180,10 +181,8 @@ export function Downloads({
             </table>
           </div>
         )}
-        <p className="text-soft mt-4 text-[12px] leading-relaxed">
-          <span className="text-saffron">provisional</span> marks near real time detections FIRMS
-          has not classified yet; the calendar counts vegetation fires only, the full download can
-          include every detection.
+        <p className="text-mute mt-4 text-[12px]">
+          The file lists every detection; the calendar counts vegetation fires only.
         </p>
       </Card>
     </div>

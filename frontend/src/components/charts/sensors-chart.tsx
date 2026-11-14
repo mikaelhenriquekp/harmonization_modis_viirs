@@ -10,7 +10,6 @@ import { ChartTooltip, YGrid } from './chart-frame'
 
 const H = 240
 const LEFT = 44
-const RIGHT = 92
 const BOTTOM = 22
 
 /** Why the record needs harmonizing: the raw sensors next to the harmonized series. */
@@ -22,14 +21,16 @@ export function SensorsChart({ data }: { data: SensorsResponse }) {
   const present = SERIES.filter((s) => rows.some((r) => r[s.key] > 0))
   const max = niceMax(Math.max(1, ...rows.flatMap((r) => present.map((s) => r[s.key]))))
   const plotH = H - BOTTOM
-  const x = (i: number) => LEFT + (i / Math.max(rows.length - 1, 1)) * (width - LEFT - RIGHT)
+  const ends = width >= 520
+  const right = ends ? 92 : 12
+  const x = (i: number) => LEFT + (i / Math.max(rows.length - 1, 1)) * (width - LEFT - right)
   const y = (v: number) => plotH - (v / max) * plotH
   const labelYs = spreadLabels(
     present.map((s) => {
       const last = [...rows].reverse().find((r) => r[s.key] > 0)
       return last ? y(last[s.key]) : plotH
     }),
-    13,
+    14,
   )
 
   return (
@@ -97,7 +98,7 @@ export function SensorsChart({ data }: { data: SensorsResponse }) {
           >
             <YGrid
               max={max}
-              width={width - RIGHT}
+              width={width - right}
               height={plotH}
               left={LEFT}
               format={formatCount}
@@ -105,7 +106,6 @@ export function SensorsChart({ data }: { data: SensorsResponse }) {
             {present.map((s, k) => {
               const pts = rows.map((r, i) => ({ i, v: r[s.key] })).filter((p) => p.v > 0)
               if (!pts.length) return null
-              const last = pts.at(-1)!
               const labelY = labelYs[k]
               return (
                 <g key={s.key}>
@@ -117,14 +117,16 @@ export function SensorsChart({ data }: { data: SensorsResponse }) {
                     strokeLinejoin="round"
                     strokeDasharray={s.key === 'harmonized' ? undefined : '0'}
                   />
-                  <text
-                    x={x(last.i) + 6}
-                    y={labelY}
-                    dy="0.32em"
-                    className="fill-[var(--ink-2)] text-[11px]"
-                  >
-                    {s.label}
-                  </text>
+                  {ends && (
+                    <text
+                      x={x(rows.length - 1) + 8}
+                      y={labelY}
+                      dy="0.32em"
+                      className="fill-[var(--ink-2)] text-[11px]"
+                    >
+                      {s.label}
+                    </text>
+                  )}
                 </g>
               )
             })}
@@ -154,9 +156,9 @@ export function SensorsChart({ data }: { data: SensorsResponse }) {
             {rows.map((r, i) => (
               <rect
                 key={r.year}
-                x={x(i) - (width - LEFT - RIGHT) / Math.max(rows.length - 1, 1) / 2}
+                x={x(i) - (width - LEFT - right) / Math.max(rows.length - 1, 1) / 2}
                 y={0}
-                width={(width - LEFT - RIGHT) / Math.max(rows.length - 1, 1)}
+                width={(width - LEFT - right) / Math.max(rows.length - 1, 1)}
                 height={plotH}
                 fill="transparent"
                 tabIndex={0}
@@ -180,7 +182,7 @@ export function SensorsChart({ data }: { data: SensorsResponse }) {
                 .join(' · ')}
             </>
           ) : (
-            <span className="text-muted-foreground">Hover or focus a year for its numbers.</span>
+            <span className="text-muted-foreground">Point at a year for its numbers.</span>
           )}
         </ChartTooltip>
       )}

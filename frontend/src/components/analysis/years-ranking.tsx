@@ -1,5 +1,3 @@
-import { Info } from 'lucide-react'
-
 import type { Calendar } from '@/api/types'
 import { formatCount } from '@/lib/format'
 import { topYears } from '@/lib/insights'
@@ -30,10 +28,8 @@ export function YearsRanking({ calendar }: { calendar: Calendar }) {
   const max = Math.max(1, ...top.map((y) => y.hotspots))
   return (
     <div>
-      <h3 className="text-[20px] leading-tight font-semibold">Years ranked by hotspots</h3>
-      <p className="text-soft mt-1 text-[13px]">
-        The {top.length} most active complete years in the area
-      </p>
+      <h3 className="text-[20px] leading-tight font-semibold">Busiest years</h3>
+      <p className="text-soft mt-1 text-[13px]">Complete years with the most hotspots</p>
       <ol aria-label="Most active years" className="mt-5 space-y-2.5">
         {top.map((y, i) => (
           <li
@@ -51,16 +47,10 @@ export function YearsRanking({ calendar }: { calendar: Calendar }) {
         ))}
       </ol>
       {current && !current.complete && (
-        <p className="text-soft mt-3 font-mono text-[12px]">
-          <span className="bg-saffron mr-1.5 inline-block size-2 rounded-full" />
+        <p className="text-soft border-line mt-4 border-t pt-3 font-mono text-[12px]">
           {current.year} so far: {formatCount(current.hotspots)} in {current.months} months
         </p>
       )}
-      <p className="bg-card-2 text-soft mt-5 flex gap-3 rounded-[14px] p-4 text-[13px] leading-snug">
-        <Info className="text-slate mt-0.5 size-4 shrink-0" aria-hidden />
-        Anomalies compare each month with the same month of every other year in the record (median
-        and middle half).
-      </p>
     </div>
   )
 }

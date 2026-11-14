@@ -1,15 +1,20 @@
 import { CalendarRange, Download, MapPin, Pencil } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 
 import type { MonthRange } from '@/api/calendar'
 import { PeriodPicker } from '@/components/explore/period-picker'
 import type { Area } from '@/lib/area'
-import { formatCount } from '@/lib/format'
+import { formatCount, formatMonth } from '@/lib/format'
 
 function sizeKm2(cells: number, south: number, north: number): number {
   const lat = ((south + north) / 2) * (Math.PI / 180)
   return cells * 27.8 * 27.8 * Math.cos(lat)
+}
+
+/** "2002-07" as "Jul 2002"; anything else as it is. */
+function label(month: string): string {
+  return /^\d{4}-\d{2}$/.test(month) ? formatMonth(month, 'short') : month
 }
 
 interface TopBarProps {
@@ -40,6 +45,22 @@ export function TopBar({
 }: TopBarProps) {
   const [period, setPeriod] = useState(false)
   const periodId = useId()
+  const periodRef = useRef<HTMLDivElement>(null)
+
+  // the popover closes on Escape or a click outside it
+  useEffect(() => {
+    if (!period) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setPeriod(false)
+    const onDown = (e: PointerEvent) => {
+      if (!periodRef.current?.contains(e.target as Node)) setPeriod(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onDown)
+    }
+  }, [period])
   const { search } = useLocation()
   const km2 =
     cells && gridBBox && area.kind !== 'world' ? sizeKm2(cells, gridBBox[1], gridBBox[3]) : null
@@ -61,15 +82,16 @@ export function TopBar({
           )}
           <Pencil className="size-3.5 shrink-0" />
         </button>
-        <div className="relative">
+        <div ref={periodRef} className="relative">
           <button
             type="button"
             aria-expanded={period}
             aria-controls={periodId}
             onClick={() => setPeriod((p) => !p)}
-            className="border-line num flex items-center gap-2 rounded-full border px-4 py-2 font-mono text-[13px] hover:bg-white/5"
+            className="border-line num flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] hover:bg-white/5"
+            aria-label={`Period: ${label(from)} to ${label(to)}. Change it`}
           >
-            <CalendarRange className="size-4" /> {from} → {to}
+            <CalendarRange className="size-4" /> {label(from)} – {label(to)}
           </button>
           {period && (
             <div
@@ -89,16 +111,16 @@ export function TopBar({
           )}
         </div>
         {dataUntil && (
-          <p className="text-soft hidden items-center gap-2 font-mono text-[12px] sm:flex">
-            <span className="bg-saffron size-1.5 rounded-full" /> Data up to {dataUntil}
+          <p className="text-mute hidden text-[12px] sm:block">
+            Data to {Number(dataUntil.slice(8))} {formatMonth(dataUntil.slice(0, 7), 'short')}
           </p>
         )}
         <Link
           to={{ search, hash: '#downloads' }}
-          className="bg-saffron ml-auto flex items-center gap-2 rounded-full px-4 py-2 text-[14px] font-semibold text-[#100d0f]"
+          aria-label="Downloads"
+          className="bg-saffron text-on-accent ml-auto flex size-10 shrink-0 items-center justify-center gap-2 rounded-full sm:size-auto sm:px-4 sm:py-2 text-[14px] font-semibold hover:brightness-110"
         >
-          <Download className="size-4" /> <span className="hidden sm:inline">Export analysis</span>
-          <span className="sm:hidden">Export</span>
+          <Download className="size-4" /> <span className="hidden sm:inline">Download</span>
         </Link>
       </div>
     </div>

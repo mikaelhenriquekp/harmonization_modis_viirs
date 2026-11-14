@@ -34,14 +34,14 @@ export function AboutPage() {
             Is this month&apos;s fire <span className="serif">normal</span>?
           </h1>
           <p className="text-soft mt-4 text-[16px] leading-relaxed">
-            Paparajote Lunar answers that for any place on Earth. It joins NASA&apos;s MODIS and
-            VIIRS fire hotspots since 2002 into one consistent burn calendar, for emergency teams,
-            land managers and scientists.
+            Ctrl + Fire answers that for any place on Earth. It joins NASA&apos;s MODIS and VIIRS
+            fire hotspots since 2002 into one consistent burn calendar, for emergency teams, land
+            managers and scientists.
           </p>
         </div>
         <img
           src={mascot}
-          alt="The Paparajote Lunar mascot, a paparajote in an astronaut suit"
+          alt="The Ctrl + Fire mascot, a paparajote in an astronaut suit"
           className="hidden w-36 sm:block"
         />
       </header>
@@ -102,9 +102,9 @@ export function AboutPage() {
 
       <Section id="team" title="Team">
         <p className="text-ink-2 text-sm leading-relaxed">
-          Built in Murcia, home of the paparajote, for the NASA Space Apps Challenge 2026
-          (“Harmonization of MODIS and VIIRS Hot Spots”). The method comes from the study by Alexis
-          Rodriguez and Basma Barhel.
+          Built by team Paparajote Lunar in Murcia, home of the paparajote, for the NASA Space Apps
+          Challenge 2026 (“Harmonization of MODIS and VIIRS Hot Spots”). The method comes from the
+          study by Alexis Rodriguez and Basma Barhel.
         </p>
         <ul className="mt-3 flex flex-wrap gap-2 text-sm">
           {TEAM.map((t) => (

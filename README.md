@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="brand/mascot/mascot-256.png" alt="Paparajote Lunar mascot" width="160" />
+  <img src="brand/mascot/mascot-256.png" alt="Ctrl + Fire mascot" width="160" />
 </p>
 
-# Paparajote Lunar
+# Ctrl + Fire
 
-Our project for the [NASA Space Apps Challenge 2026](https://www.spaceappschallenge.org/2026/), challenge **[Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/)**.
+By team **Paparajote Lunar**, our project for the [NASA Space Apps Challenge 2026](https://www.spaceappschallenge.org/2026/), challenge **[Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/)**.
 
 Live at **https://paparajotelunar.com**
 

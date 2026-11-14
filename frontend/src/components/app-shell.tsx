@@ -115,12 +115,12 @@ export function AppShell() {
         <NavLink
           to={{ pathname: '/', search }}
           className="mb-6 flex flex-col items-center gap-1"
-          aria-label="Paparajote Lunar, home"
+          aria-label="Ctrl + Fire, home"
         >
           <span className="bg-card-2 grid size-12 place-items-center rounded-[14px]">
             <img src={head} alt="" className="size-10" />
           </span>
-          <span className="text-[11px] font-semibold">Paparajote</span>
+          <span className="text-[11px] font-semibold whitespace-nowrap">Ctrl + Fire</span>
         </NavLink>
         <nav className="flex w-full flex-col items-center gap-2">
           {NAV.map((n) => (

@@ -1,53 +1,109 @@
 @import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Paparajote Lunar: the brand's space navy and cream, paparajote gold as the
+ * accent. Fire data uses one-hue orange ramps validated for each surface
+ * (ordinal: monotone lightness, visible steps, light end clears the surface).
+ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --radius: 0.75rem;
+
+  --background: #fff6e4; /* cream */
+  --surface: #fffbf2;
+  --surface-2: #f6ead0;
+  --foreground: #03133f; /* navy */
+  --ink-2: #2e3a6b;
+  --muted-foreground: #5c6488;
+  --line: rgb(3 19 63 / 0.12);
+  --accent-gold: #fdad1e;
+  --accent-ink: #9a5b00; /* gold dark enough for text on cream */
+
+  --heat-0: #efe3c6;
+  --heat-1: #f39466;
+  --heat-2: #e57a43;
+  --heat-3: #d75e11;
+  --heat-4: #c44500;
+  --heat-5: #aa3400;
+  --heat-6: #8d2800;
+  --heat-7: #6e2200;
+
+  --tone-critical: #c62f2f;
+  --tone-serious: #c96a10;
+  --tone-neutral: #6b7194;
+  --tone-cool: #3f7cc4;
+  --tone-cooler: #23559c;
+  --tone-none: #9aa0b8;
+
+  --series-harmonized: #2a78d6;
+  --series-aqua: #eb6834;
+  --series-snpp: #1baf7a;
+  --series-n20: #eda100;
+
+  /* shadcn names, used by the ui primitives */
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --primary: var(--foreground);
+  --primary-foreground: var(--background);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--surface-2);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--tone-critical);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--accent-gold);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: #0b1640; /* space */
+  --surface: #101d4f;
+  --surface-2: #17275f;
+  --foreground: #fff6e4;
+  --ink-2: #d5d8ea;
+  --muted-foreground: #9aa1c4;
+  --line: rgb(255 246 228 / 0.13);
+  --accent-ink: #fdad1e;
+
+  --heat-0: #1b2a66;
+  --heat-1: #9d5300;
+  --heat-2: #bd6400;
+  --heat-3: #da7900;
+  --heat-4: #f0933a;
+  --heat-5: #fdb171;
+  --heat-6: #ffcd9e;
+  --heat-7: #ffebd1;
+
+  --tone-critical: #ff6b5e;
+  --tone-serious: #ffa24d;
+  --tone-neutral: #9aa1c4;
+  --tone-cool: #7fb0ec;
+  --tone-cooler: #4f8ce8;
+  --tone-none: #6f7697;
+
+  --series-harmonized: #3987e5;
+  --series-aqua: #d95926;
+  --series-snpp: #199e70;
+  --series-n20: #c98500;
 }
 
 @theme inline {
+  --font-sans: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-foreground: var(--foreground);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-gold: var(--accent-gold);
+  --color-gold-ink: var(--accent-ink);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
@@ -62,13 +118,62 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-tone-critical: var(--tone-critical);
+  --color-tone-serious: var(--tone-serious);
+  --color-tone-neutral: var(--tone-neutral);
+  --color-tone-cool: var(--tone-cool);
+  --color-tone-cooler: var(--tone-cooler);
+  --color-tone-none: var(--tone-none);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/60;
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-optical-sizing: auto;
   }
+  :focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Leaflet sits inside our themed surfaces */
+.leaflet-container {
+  font: inherit;
+  background: var(--surface-2);
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+}
+.dark .leaflet-control-attribution {
+  background: rgb(11 22 64 / 0.75) !important;
+  color: var(--muted-foreground);
+}
+.dark .leaflet-control-attribution a {
+  color: var(--ink-2);
+}
+.dark .leaflet-bar a {
+  background: var(--surface);
+  color: var(--foreground);
+  border-color: var(--line);
 }

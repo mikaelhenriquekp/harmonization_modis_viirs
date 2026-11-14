@@ -37,13 +37,13 @@ func (r *PostgresRepository) Cells(ctx context.Context, a geo.Area, from, to har
 			                date_trunc('year', now())::date - interval '1 month')::date AS archive_end
 		), c AS (
 			SELECT cell_lat, cell_lon, hotspots, frp FROM cell_months, e
-			WHERE %[1]s AND month BETWEEN $7::date AND LEAST($8::date, e.archive_end)
+			WHERE %[1]s AND month BETWEEN $9::date AND LEAST($10::date, e.archive_end)
 			UNION ALL
 			SELECT cell_lat, cell_lon, hotspots, frp FROM recent_cell_days, e
-			WHERE %[1]s AND day >= GREATEST($7::date, (e.archive_end + interval '1 month')::date)
-			  AND day < ($8::date + interval '1 month')::date
+			WHERE %[1]s AND day >= GREATEST($9::date, (e.archive_end + interval '1 month')::date)
+			  AND day < ($10::date + interval '1 month')::date
 		)
-		SELECT floor(cell_lat::float8 / $9)::int, floor(cell_lon::float8 / $9)::int, sum(hotspots)::float8, sum(frp)::float8
+		SELECT floor(cell_lat::float8 / $11)::int, floor(cell_lon::float8 / $11)::int, sum(hotspots)::float8, sum(frp)::float8
 		FROM c GROUP BY 1, 2`, cond), args...)
 	if err != nil {
 		return nil, fmt.Errorf("query map cells: %w", err)

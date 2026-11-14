@@ -167,3 +167,19 @@ func TestFetchSurfacesFIRMSErrors(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+func TestFetchCropsToThePolygon(t *testing.T) {
+	f := &fakeFIRMS{}
+	rows, err := NewService(f).Fetch(t.Context(), Query{Area: area(t, "polygon=-2,37,-1,37,-1,39"), From: day("2020-01-01"), To: day("2020-01-01")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// the fake's detection at 38.1,-1.1 is inside the triangle; its bbox is what FIRMS is asked for
+	if len(rows) != 1 || !strings.Contains(f.calls[0], " -2,37,-1,39 ") {
+		t.Errorf("rows = %d calls = %v", len(rows), f.calls)
+	}
+	rows, err = NewService(&fakeFIRMS{}).Fetch(t.Context(), Query{Area: area(t, "polygon=-2,37,-1.5,37,-2,39"), From: day("2020-01-01"), To: day("2020-01-01")})
+	if err != nil || len(rows) != 0 {
+		t.Errorf("a detection outside the polygon but inside its box must be dropped: %d, %v", len(rows), err)
+	}
+}

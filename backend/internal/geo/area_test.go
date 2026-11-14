@@ -2,6 +2,7 @@ package geo
 
 import (
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -67,7 +68,7 @@ func TestAreaGridBBoxAndArgs(t *testing.T) {
 		t.Errorf("Cells = %d", a.Cells())
 	}
 	args := a.Args()
-	if len(args) != 6 || args[4] != int16(1) || args[5] != int16(0) {
+	if len(args) != ArgCount || args[4] != int16(1) || args[5] != int16(0) {
 		t.Errorf("Args = %v (second lon range must be empty)", args)
 	}
 	if a.BBox != [4]float64{-2.35, 37.37, -0.65, 38.76} {
@@ -80,5 +81,78 @@ func TestAreaContainsCell(t *testing.T) {
 	a, _ := ParseArea(q)
 	if !a.ContainsCell(-150, 700) || !a.ContainsCell(-150, -700) || a.ContainsCell(-150, 0) {
 		t.Error("ContainsCell is wrong across the antimeridian")
+	}
+}
+
+func parse(t *testing.T, q string) Area {
+	t.Helper()
+	v, _ := url.ParseQuery(q)
+	a, err := ParseArea(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return a
+}
+
+func TestPolygonKeepsCellsWhoseCenterIsInside(t *testing.T) {
+	// A square of exactly 2x2 cells (0..0.5, 0..0.5) and a triangle over 4x4 cells.
+	square := parse(t, "polygon=0,0,0.5,0,0.5,0.5,0,0.5")
+	if square.Cells() != 4 || len(square.Mask) != 4 {
+		t.Fatalf("square cells = %d, mask = %v", square.Cells(), square.Mask)
+	}
+	if !square.ContainsCell(0, 0) || !square.ContainsCell(1, 1) || square.ContainsCell(2, 0) {
+		t.Error("square ContainsCell is wrong")
+	}
+	tri := parse(t, "polygon=0,0,0.99,0,0,0.99")
+	// centers (i+0.5)*0.25 with x+y < 0.99: 6 of the 16 cells of the bounding box
+	if tri.Cells() != 6 {
+		t.Errorf("triangle cells = %d, want 6", tri.Cells())
+	}
+	if !tri.ContainsCell(0, 0) || tri.ContainsCell(3, 3) {
+		t.Error("triangle ContainsCell is wrong")
+	}
+	if g := tri.GridBBox(); g != [4]float64{0, 0, 1, 1} {
+		t.Errorf("GridBBox = %v", g)
+	}
+	if !tri.ContainsPoint(0.1, 0.1) || tri.ContainsPoint(0.9, 0.9) {
+		t.Error("ContainsPoint is wrong")
+	}
+}
+
+func TestTinyPolygonKeepsTheCellsItTouches(t *testing.T) {
+	a := parse(t, "polygon=-1.10,38.01,-1.05,38.01,-1.05,38.05")
+	if a.Cells() != 1 || !a.ContainsCell(152, -5) {
+		t.Errorf("mask = %v", a.Mask)
+	}
+}
+
+func TestPolygonErrors(t *testing.T) {
+	for _, q := range []string{
+		"polygon=0,0,1,0",                     // two points
+		"polygon=0,0,1,x,0,1",                 // not a number
+		"polygon=0,0,1,0,0,95",                // out of range
+		"polygon=170,0,-170,0,-170,10",        // crosses the antimeridian
+		"polygon=-60,-30,60,-30,60,30,-60,30", // too many cells
+	} {
+		v, _ := url.ParseQuery(q)
+		if _, err := ParseArea(v); err == nil {
+			t.Errorf("%s: want error", q)
+		}
+	}
+}
+
+func TestArgsAndKeyIncludeTheMask(t *testing.T) {
+	a, b := parse(t, "polygon=0,0,0.99,0,0,0.99"), parse(t, "polygon=0,0,0.99,0,0.99,0.99")
+	if len(a.Args()) != ArgCount || len(parse(t, "bbox=0,0,1,1").Args()) != ArgCount {
+		t.Fatalf("Args must always have %d values", ArgCount)
+	}
+	if a.Key() == b.Key() || a.Key() == parse(t, "bbox=0,0,1,1").Key() {
+		t.Error("different areas must have different keys")
+	}
+	if a.Key() != parse(t, "polygon=0,0,0.99,0,0,0.99").Key() {
+		t.Error("the same area must have the same key")
+	}
+	if c := Condition(1); !strings.Contains(c, "$7") || !strings.Contains(c, "$8") {
+		t.Errorf("Condition = %s", c)
 	}
 }

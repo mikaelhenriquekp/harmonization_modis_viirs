@@ -37,12 +37,12 @@ func (r *PostgresRepository) MonthlyTotals(ctx context.Context, a geo.Area, from
 	rows, err := r.db.Query(ctx, fmt.Sprintf(`
 		SELECT month, sum(hotspots)::float8, sum(frp)::float8, min(source), false
 		FROM cell_months
-		WHERE %[1]s AND month BETWEEN $7::date AND LEAST($8::date, $9::date)
+		WHERE %[1]s AND month BETWEEN $9::date AND LEAST($10::date, $11::date)
 		GROUP BY month
 		UNION ALL
 		SELECT date_trunc('month', day)::date, sum(hotspots)::float8, sum(frp)::float8, 'viirs_recent', bool_or(provisional)
 		FROM recent_cell_days
-		WHERE %[1]s AND day >= GREATEST($7::date, ($9::date + interval '1 month')::date) AND day < ($8::date + interval '1 month')::date
+		WHERE %[1]s AND day >= GREATEST($9::date, ($11::date + interval '1 month')::date) AND day < ($10::date + interval '1 month')::date
 		GROUP BY 1
 		ORDER BY 1`, cond), args...)
 	if err != nil {
@@ -65,7 +65,7 @@ func (r *PostgresRepository) SensorTotals(ctx context.Context, a geo.Area, from,
 	rows, err := r.db.Query(ctx, fmt.Sprintf(`
 		SELECT sensor, month, sum(hotspots)::float8
 		FROM sensor_cell_months
-		WHERE %s AND month BETWEEN $7 AND $8
+		WHERE %s AND month BETWEEN $9 AND $10
 		GROUP BY sensor, month`, geo.Condition(1)), args...)
 	if err != nil {
 		return nil, fmt.Errorf("query sensor totals: %w", err)

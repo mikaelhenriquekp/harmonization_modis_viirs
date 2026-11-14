@@ -19,15 +19,21 @@ function normalize(s: string): string {
     .toLowerCase()
 }
 
-/** Find a ready-made place or any harmonized country. */
+/**
+ * Find a ready-made place or any harmonized country. Compact pickers only
+ * list places while the search is in use.
+ */
 export function PlacePicker({
   regions,
   onPick,
+  compact = false,
 }: {
   regions: RegionSummary[] | undefined
   onPick: (area: Area, name: string) => void
+  compact?: boolean
 }) {
   const [query, setQuery] = useState('')
+  const [focused, setFocused] = useState(false)
   const id = useId()
   const options = useMemo<Option[]>(() => {
     const countries: Option[] = (regions ?? [])
@@ -50,7 +56,13 @@ export function PlacePicker({
   }, [regions, query])
 
   return (
-    <div>
+    // the list stays open while the focus is anywhere inside, so Tab reaches it
+    <div
+      onFocus={() => setFocused(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false)
+      }}
+    >
       <label htmlFor={id} className="sr-only">
         Find a place or country
       </label>
@@ -61,32 +73,43 @@ export function PlacePicker({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setQuery('')
+              e.currentTarget.blur()
+            }
+          }}
           placeholder="Find a place or country"
           className="placeholder:text-muted-foreground h-10 w-full bg-transparent text-sm outline-none"
         />
       </div>
-      <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Places">
-        {options.map((o) => (
-          <li key={o.id}>
-            <button
-              type="button"
-              onClick={() => {
-                onPick(o.area, o.name)
-                setQuery('')
-              }}
-              className="border-line hover:border-saffron rounded-full border px-3 py-1 text-left text-sm"
-              title={o.note}
-            >
-              {o.name}
-            </button>
-          </li>
-        ))}
-        {options.length === 0 && (
-          <li className="text-muted-foreground px-1 py-1 text-sm">
-            No place or country with that name.
-          </li>
-        )}
-      </ul>
+      {(!compact || focused || query) && (
+        <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Places">
+          {options.map((o) => (
+            <li key={o.id}>
+              <button
+                type="button"
+                // keep the focus in the search, or the list closes before the click lands
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onPick(o.area, o.name)
+                  setQuery('')
+                  if (compact) (document.activeElement as HTMLElement | null)?.blur()
+                }}
+                className="border-line hover:border-saffron rounded-full border px-3 py-1 text-left text-sm"
+                title={o.note}
+              >
+                {o.name}
+              </button>
+            </li>
+          ))}
+          {options.length === 0 && (
+            <li className="text-muted-foreground px-1 py-1 text-sm">
+              No place or country with that name.
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   )
 }

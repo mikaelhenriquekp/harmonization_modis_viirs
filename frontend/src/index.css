@@ -176,27 +176,6 @@
     border-left: 6px solid transparent;
     border-top: 6px solid currentColor;
   }
-  @keyframes ping {
-    0% {
-      transform: translate(-50%, -50%) scale(0.4);
-      opacity: 0.9;
-    }
-    100% {
-      transform: translate(-50%, -50%) scale(1.6);
-      opacity: 0;
-    }
-  }
-  .ring-ping {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 64px;
-    height: 64px;
-    border-radius: 9999px;
-    border: 1.5px solid currentColor;
-    animation: ping 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
-    pointer-events: none;
-  }
 }
 
 .leaflet-container {
@@ -211,10 +190,59 @@
 .leaflet-control-attribution a {
   color: var(--soft);
 }
+.leaflet-bar {
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
 .leaflet-bar a {
   background: var(--card);
   color: var(--bone);
   border-color: var(--line);
+  transition: background-color 150ms;
+}
+.leaflet-bar a:hover {
+  background: var(--card-2);
+  color: var(--bone);
+}
+.leaflet-bar a.leaflet-disabled {
+  background: var(--card);
+  color: var(--mute);
+  opacity: 0.5;
+}
+.leaflet-touch .leaflet-bar a {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+}
+
+/* map tooltips in the card's materials */
+.leaflet-tooltip.map-tip {
+  background: var(--card);
+  color: var(--bone);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.45);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 10px;
+}
+.leaflet-tooltip.map-tip b {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.leaflet-tooltip-top.map-tip::before {
+  border-top-color: var(--line);
+}
+
+/* on a wide screen the atlas floats cards over the map: keep its controls clear of them */
+@media (min-width: 1024px) {
+  .atlas-map .leaflet-right {
+    right: 392px;
+  }
+  .atlas-map .leaflet-bottom {
+    bottom: 140px;
+  }
 }
 
 /* Ember, the assistant: the /ask page's effects */

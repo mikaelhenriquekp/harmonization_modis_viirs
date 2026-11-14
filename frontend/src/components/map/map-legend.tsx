@@ -15,6 +15,13 @@ function Swatch({ color }: { color: string }) {
   )
 }
 
+const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumSignificantDigits: 2 })
+
+/** A legend tick: few digits, so the scale reads at a glance. */
+function tick(v: number): string {
+  return v < 10 ? String(Math.round(v)) : compact.format(v)
+}
+
 interface MapLegendProps {
   layer: MapLayer
   /** What the layer shows, e.g. "August 2017". */
@@ -45,20 +52,27 @@ export function MapLegend({ layer, period, max, cellDegrees, count, className }:
               <span key={s} className="flex-1" style={{ background: `var(--heat-${s})` }} />
             ))}
           </div>
-          <div className="text-mute num mt-1 flex justify-between font-mono text-[11px]">
-            {max !== undefined ? (
-              <>
-                <span>{formatCount(Math.max(mapBreaks(max)[1], 1))}</span>
-                <span>{formatCount(mapBreaks(max)[3])}</span>
-                <span>{formatCount(max)}</span>
-              </>
-            ) : (
-              <>
-                <span>fewer</span>
-                <span>more</span>
-              </>
-            )}
-          </div>
+          {max !== undefined && max > 1 ? (
+            <div className="text-mute num relative mt-1 h-4 font-mono text-[11px]">
+              {mapBreaks(max).map((b, i) =>
+                i % 2 === 0 ? (
+                  <span
+                    key={i}
+                    className={cn('absolute', i > 0 && '-translate-x-1/2')}
+                    style={{ left: `${(i / MAP_STEPS.length) * 100}%` }}
+                  >
+                    {tick(Math.max(b, 1))}
+                  </span>
+                ) : null,
+              )}
+              <span className="absolute right-0">{tick(max)}</span>
+            </div>
+          ) : (
+            <div className="text-mute mt-1 flex justify-between text-[11px]">
+              <span>fewer</span>
+              <span>more</span>
+            </div>
+          )}
         </>
       )}
       {layer === 'anomalies' && (

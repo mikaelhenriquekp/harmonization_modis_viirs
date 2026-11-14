@@ -32,13 +32,14 @@ describe('mapStep', () => {
     expect(mapStep(0, 1000)).toBe(2)
     expect(mapStep(1, 1000)).toBe(2)
     expect(mapStep(1000, 1000)).toBe(6)
-    expect(mapStep(250, 1000)).toBe(4)
+    // a log scale: 30 of 1000 is already halfway
+    expect(mapStep(30, 1000)).toBe(4)
     expect(mapStep(5, 0)).toBe(2)
   })
 
   it('puts each legend break where its step starts', () => {
     const breaks = mapBreaks(1000)
     expect(breaks[0]).toBe(0)
-    breaks.forEach((b, i) => expect(mapStep(b + 0.001, 1000)).toBe(MAP_STEPS[i]))
+    breaks.forEach((b, i) => expect(mapStep(b * 1.0001 + 0.0001, 1000)).toBe(MAP_STEPS[i]))
   })
 })

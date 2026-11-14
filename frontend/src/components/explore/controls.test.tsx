@@ -125,3 +125,25 @@ describe('PeriodPicker', () => {
     expect(onChange).toHaveBeenCalledWith({ from: undefined, to: '2020-12' })
   })
 })
+
+describe('PlacePicker, compact', () => {
+  it('opens a list on focus and picks with the keyboard', async () => {
+    const onPick = vi.fn()
+    render(<PlacePicker compact regions={[]} onPick={onPick} />)
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    const box = screen.getByRole('combobox', { name: /find a place or country/i })
+    await userEvent.click(box)
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    await userEvent.type(box, 'gree')
+    await userEvent.keyboard('{Enter}')
+    expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ kind: 'bbox' }), 'Greece')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('closes with Escape', async () => {
+    render(<PlacePicker compact regions={[]} onPick={() => {}} />)
+    await userEvent.click(screen.getByRole('combobox'))
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+})

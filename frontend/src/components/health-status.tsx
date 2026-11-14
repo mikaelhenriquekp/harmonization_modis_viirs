@@ -10,14 +10,7 @@ import {
 import type { HealthReport, HealthStatus as Status } from '@/api/health'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface HealthStatusProps {
   data?: HealthReport
@@ -37,18 +30,17 @@ export function HealthStatus({
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle className="text-2xl">{data?.greeting ?? 'Hello!'}</CardTitle>
-        <CardDescription>Backend health, checked live via /api/health.</CardDescription>
+        <CardTitle className="text-2xl">{data?.greeting ?? 'Hello'}</CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-3">
         {isLoading ? (
           <p className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Loader2 className="size-4 animate-spin" /> Checking backend…
+            <Loader2 className="size-4 animate-spin" /> Loading
           </p>
         ) : error ? (
           <p role="alert" className="text-destructive flex items-center gap-2 text-sm">
-            <CircleAlert className="size-4" /> Backend unreachable: {error.message}
+            <CircleAlert className="size-4" /> {error.message}
           </p>
         ) : data ? (
           <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">

@@ -49,7 +49,6 @@ func run() error {
 		return err
 	}
 
-	// Wiring: repository → service → handler.
 	healthHandler := health.NewHandler(health.NewService(health.NewPostgresRepository(db), log))
 
 	srv := &http.Server{

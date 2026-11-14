@@ -3,7 +3,7 @@ package migrations
 
 import "embed"
 
-// FS contains all *.sql migrations, applied automatically on startup.
+// FS contains the SQL migrations.
 //
 //go:embed *.sql
 var FS embed.FS

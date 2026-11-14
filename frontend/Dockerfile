@@ -1,4 +1,3 @@
-# Build the SPA, then serve it with nginx. /api is routed to the backend by Caddy.
 FROM node:24-alpine AS build
 WORKDIR /app
 

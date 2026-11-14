@@ -5,7 +5,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Never run two deploys at once; queue them instead of cancelling mid-deploy.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -18,7 +17,6 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   deploy:
-    name: Deploy to production
     needs: ci
     runs-on: [self-hosted, linux]
     environment:
@@ -29,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Write production env file
+      - name: Write .env
         env:
           DOMAIN: ${{ vars.DOMAIN }}
           ACME_EMAIL: ${{ vars.ACME_EMAIL }}
@@ -46,27 +44,26 @@ jobs:
             echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
           } > deploy/.env
 
-      - name: Build and start containers
+      - name: Compose up
         run: $COMPOSE up -d --build --remove-orphans
 
-      - name: Wait for API health (migrations included)
+      - name: Health check
         run: |
           for _ in $(seq 1 30); do
             if $COMPOSE exec -T caddy wget -qO- http://api:8080/api/health; then
-              echo; echo "API is healthy"; exit 0
+              exit 0
             fi
             sleep 2
           done
-          echo "API did not become healthy" >&2
           $COMPOSE ps
           $COMPOSE logs --tail=100 api
           exit 1
 
-      - name: Show running services
+      - name: Status
         if: always()
         run: $COMPOSE ps
 
-      - name: Clean up
+      - name: Cleanup
         if: always()
         run: |
           rm -f deploy/.env

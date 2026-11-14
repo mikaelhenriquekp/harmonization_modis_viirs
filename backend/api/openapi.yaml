@@ -17,9 +17,9 @@ info:
     - Countries with too little fire to learn a model of their own are harmonized with a regional model
       pooled with their nearest neighbors (`scope: regional`).
 
-    **Areas of interest.** Every data endpoint takes the same area parameters: `bbox`, or `lat` + `lon`
-    (+ `radius_km`), or nothing for the whole world. The area is snapped to the 0.25° cells it intersects;
-    the response says which cells were used (`grid_bbox`).
+    **Areas of interest.** Every data endpoint takes the same area parameters: a drawn `polygon`, a `bbox`,
+    or `lat` + `lon` (+ `radius_km`), or nothing for the whole world. The area is snapped to 0.25° cells;
+    the response says which cells were used (`grid_bbox`, `cells`).
 
     **Attribution.** We acknowledge the use of data and/or imagery from NASA's Fire Information for Resource
     Management System (FIRMS) (https://earthdata.nasa.gov/firms), part of NASA's Land, Atmosphere Near
@@ -60,6 +60,7 @@ paths:
         The last month with data may be incomplete: it is then compared at its current pace
         (`projected` = hotspots so far / elapsed fraction of the month). Results are cached for 10 minutes.
       parameters:
+        - $ref: '#/components/parameters/Polygon'
         - $ref: '#/components/parameters/BBox'
         - $ref: '#/components/parameters/Lat'
         - $ref: '#/components/parameters/Lon'
@@ -82,6 +83,7 @@ paths:
       summary: The calendar of an area as CSV
       description: One row per month, the same values as `months` in `/api/calendar`.
       parameters:
+        - $ref: '#/components/parameters/Polygon'
         - $ref: '#/components/parameters/BBox'
         - $ref: '#/components/parameters/Lat'
         - $ref: '#/components/parameters/Lon'
@@ -114,6 +116,7 @@ paths:
         Monthly raw counts of MODIS Aqua, Suomi NPP and NOAA-20 in the area, next to the harmonized series.
         Shows why the record needs harmonizing: VIIRS sees several times more hotspots than MODIS.
       parameters:
+        - $ref: '#/components/parameters/Polygon'
         - $ref: '#/components/parameters/BBox'
         - $ref: '#/components/parameters/Lat'
         - $ref: '#/components/parameters/Lon'
@@ -138,6 +141,7 @@ paths:
         Sum of the harmonized hotspots of every cell over [`from`, `to`], aggregated to `resolution` degrees.
         Only cells with hotspots are returned. Without `from`/`to` it is the current month.
       parameters:
+        - $ref: '#/components/parameters/Polygon'
         - $ref: '#/components/parameters/BBox'
         - $ref: '#/components/parameters/Lat'
         - $ref: '#/components/parameters/Lon'
@@ -178,6 +182,7 @@ paths:
         VIIRS confidence not low, the satellite of the day); `all=true` returns everything FIRMS has for those
         sources. Up to 366 days for an area, 10 days for the whole world.
       parameters:
+        - $ref: '#/components/parameters/Polygon'
         - $ref: '#/components/parameters/BBox'
         - $ref: '#/components/parameters/Lat'
         - $ref: '#/components/parameters/Lon'
@@ -211,6 +216,7 @@ paths:
       summary: Raw detections of an area as compact JSON
       description: Same as `/api/hotspots.csv`, as rows of values for drawing detections on a zoomed-in map.
       parameters:
+        - $ref: '#/components/parameters/Polygon'
         - $ref: '#/components/parameters/BBox'
         - $ref: '#/components/parameters/Lat'
         - $ref: '#/components/parameters/Lon'
@@ -311,6 +317,15 @@ paths:
 
 components:
   parameters:
+    Polygon:
+      name: polygon
+      in: query
+      description: |
+        Area drawn as a polygon: `lon,lat,lon,lat,...` (3 to 200 vertices, closing vertex optional). The area is the
+        0.25° cells whose center is inside it (the cells it touches when it is smaller than a cell), at most 50,000
+        cells; raw hotspots are cropped to the polygon itself. Polygons crossing the antimeridian are not supported.
+        Takes precedence over `bbox` and `lat`/`lon`.
+      schema: { type: string, example: '-2.35,37.37,-0.65,37.37,-0.65,38.76' }
     BBox:
       name: bbox
       in: query

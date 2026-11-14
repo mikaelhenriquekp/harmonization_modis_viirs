@@ -16,7 +16,7 @@ lint: ## Run golangci-lint
 	golangci-lint run ./...
 
 build: ## Build the API binary
-	CGO_ENABLED=0 go build -o bin/api ./cmd/api
+	CGO_ENABLED=0 go build -o bin/ ./cmd/...
 
 migrate-new: ## Create a new migration: make migrate-new name=create_users
 	@test -n "$(name)" || (echo "usage: make migrate-new name=<snake_case_name>" && exit 1)

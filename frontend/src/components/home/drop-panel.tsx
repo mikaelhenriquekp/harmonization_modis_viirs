@@ -1,4 +1,4 @@
-import { CalendarDays, Download, Flame, MapPinOff, Waves, X } from 'lucide-react'
+import { ArrowRight, Download, Flame, X } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { calendarCsvUrl } from '@/api/calendar'
@@ -44,9 +44,8 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
   const current = cal?.current
   const meta = current ? statusMeta(current.status) : null
   const med = cal?.climatology.map((c) => c.median ?? 0) ?? []
-  const maxMed = Math.max(1, ...med)
-  const years = cal?.years ?? []
-  const maxYear = Math.max(1, ...years.map((y) => y.hotspots))
+  const maxMedRaw = Math.max(0, ...med)
+  const maxMed = Math.max(1, maxMedRaw)
 
   return (
     <aside
@@ -58,10 +57,9 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
           <Flame className="size-5" fill="currentColor" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="eyebrow">Chosen point</p>
-          <h3 className="truncate text-[20px] leading-tight font-semibold">
+          <h2 className="truncate text-[20px] leading-tight font-semibold">
             {place ?? 'Your point'}
-          </h3>
+          </h2>
           <p className="text-soft num font-mono text-[12px]">{coords(lat, lon)}</p>
         </div>
         <button
@@ -75,7 +73,7 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
       </header>
 
       <div>
-        <p className="text-soft mb-2 text-[12px]">Search radius around the exact point</p>
+        <p className="text-soft mb-2 text-[12px]">Radius</p>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Search radius">
           {RADII.map((r) => (
             <button
@@ -86,7 +84,7 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
               className={cn(
                 'h-9 rounded-full border px-4 text-[13px] font-semibold',
                 r === radiusKm
-                  ? 'border-coral bg-coral text-[#100d0f]'
+                  ? 'border-coral bg-coral text-on-accent'
                   : 'border-line hover:bg-white/5',
               )}
             >
@@ -95,7 +93,7 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
           ))}
         </div>
         <p className="text-mute mt-2 text-[11px]">
-          Counted on the 0.25° grid (about 25 km): small radii use the cell under the point.
+          Fire is counted in 25 km squares, so small radii show the square under the point.
         </p>
       </div>
 
@@ -106,13 +104,19 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
           <Skeleton className="h-28" />
           <Skeleton className="h-24" />
         </div>
+      ) : total === 0 ? (
+        <div className="bg-card-2 flex items-center gap-4 rounded-[16px] p-5">
+          <p className="min-w-0 flex-1 text-[14px] leading-snug">
+            No fire detected within {radiusKm} km since {cal.from.slice(0, 4)}.
+            {radiusKm < 25 && <span className="text-soft"> Try a wider radius.</span>}
+          </p>
+          <Mascot mood="happy" label="The mascot looks happy" className="w-14 shrink-0" />
+        </div>
       ) : (
         <>
           <div className="bg-card-2 flex gap-4 rounded-[16px] p-5">
             <div className="min-w-0 flex-1">
-              <p className="text-soft text-[12px]">
-                Harmonized hotspots, {cal.from.slice(0, 4)} to today
-              </p>
+              <p className="text-soft text-[12px]">Hotspots since {cal.from.slice(0, 4)}</p>
               <BigNumber className="text-[40px] leading-tight">{formatCount(total)}</BigNumber>
               {current && meta && (
                 <p className="text-[14px] leading-snug">
@@ -140,11 +144,11 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
             <div className="px-3">
               <dt className="text-mute text-[11px]">Peak month</dt>
               <dd className="mt-1 font-mono text-[14px]">
-                {monthName(cal.peak.month_of_year, 'short')}
+                {maxMedRaw > 0 ? monthName(cal.peak.month_of_year, 'short') : '–'}
               </dd>
             </div>
             <div className="pl-3">
-              <dt className="text-mute text-[11px]">{ys?.year} vs mean</dt>
+              <dt className="text-mute text-[11px]">{ys?.year} vs usual</dt>
               <dd className="mt-1 font-mono text-[14px]">
                 {ys && ys.changePct !== null ? (
                   <Delta pct={ys.changePct} className="text-[14px]" />
@@ -155,94 +159,55 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
             </div>
           </dl>
 
-          <div>
-            <p className="text-soft mb-2 text-[12px]">Monthly pattern (usual)</p>
-            <div
-              className="flex h-[96px] items-end gap-1"
-              role="img"
-              aria-label="Usual hotspots per month at this point"
-            >
-              {med.map((v, i) => (
-                <span
-                  key={i}
-                  className="flex-1 rounded-t-[4px]"
-                  style={{
-                    height: `${Math.max(3, (v / maxMed) * 100)}%`,
-                    background:
-                      i + 1 === cal.peak.month_of_year ? 'var(--saffron)' : 'var(--coral)',
-                    opacity: v ? 1 : 0.25,
-                  }}
-                />
-              ))}
+          {maxMedRaw > 0 && (
+            <div>
+              <p className="text-soft mb-2 text-[12px]">Usual fire season</p>
+              <div
+                className="flex h-[96px] items-end gap-1"
+                role="img"
+                aria-label="Usual hotspots per month at this point"
+              >
+                {med.map((v, i) => (
+                  <span
+                    key={i}
+                    className="flex-1 rounded-t-[4px]"
+                    style={{
+                      height: `${Math.max(3, (v / maxMed) * 100)}%`,
+                      background:
+                        i + 1 === cal.peak.month_of_year ? 'var(--saffron)' : 'var(--coral)',
+                      opacity: v ? 1 : 0.25,
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="mt-1 flex gap-1">
+                {med.map((_, i) => (
+                  <span key={i} className="text-mute flex-1 text-center font-mono text-[9px]">
+                    {monthName(i + 1, 'narrow')}
+                  </span>
+                ))}
+              </div>
             </div>
-            <div className="mt-1 flex gap-1">
-              {med.map((_, i) => (
-                <span key={i} className="text-mute flex-1 text-center font-mono text-[9px]">
-                  {monthName(i + 1, 'narrow')}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-soft mb-2 text-[12px]">Year by year</p>
-            <svg
-              viewBox={`0 0 ${Math.max(years.length, 1) * 10} 60`}
-              preserveAspectRatio="none"
-              className="h-[60px] w-full"
-              role="img"
-              aria-label="Hotspots per year at this point"
-            >
-              {years.map((y, i) => (
-                <rect
-                  key={y.year}
-                  x={i * 10 + 1}
-                  width={8}
-                  y={60 - (y.hotspots / maxYear) * 58}
-                  height={(y.hotspots / maxYear) * 58}
-                  rx={2}
-                  fill={y.year === ys?.year ? 'var(--saffron)' : 'var(--garnet)'}
-                  opacity={y.complete ? 1 : 0.6}
-                />
-              ))}
-            </svg>
-            <div className="text-mute flex justify-between font-mono text-[10px]">
-              <span>{years[0]?.year}</span>
-              <span>{years.at(-1)?.year}</span>
-            </div>
-          </div>
+          )}
         </>
       )}
 
-      <div className="mt-auto flex flex-col gap-2">
+      <div className="mt-auto flex gap-2">
+        <Link
+          to={`/analysis${search}#calendar`}
+          className="bg-saffron text-on-accent flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-[14px] font-semibold hover:brightness-110"
+        >
+          Open the analysis <ArrowRight className="size-[18px]" />
+        </Link>
         <a
           href={calendarCsvUrl(area, {})}
           download
-          className="bg-saffron flex h-11 items-center justify-center gap-2 rounded-full text-[14px] font-semibold text-[#100d0f]"
+          aria-label="Download the monthly record as CSV"
+          title="Download CSV"
+          className="border-line grid size-11 shrink-0 place-items-center rounded-full border hover:bg-white/5"
         >
-          <Download className="size-5" /> Download CSV
+          <Download className="size-[18px]" />
         </a>
-        <div className="grid grid-cols-2 gap-2">
-          <Link
-            to={`/analysis${search}#calendar`}
-            className="border-line flex h-11 items-center justify-center gap-1 rounded-full border text-[13px] font-semibold hover:bg-white/5"
-          >
-            <CalendarDays className="size-[18px]" /> Full analysis
-          </Link>
-          <Link
-            to={`/analysis${search}#anomalies`}
-            className="border-line flex h-11 items-center justify-center gap-1 rounded-full border text-[13px] font-semibold hover:bg-white/5"
-          >
-            <Waves className="size-[18px]" /> Is this normal?
-          </Link>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-soft hover:text-bone flex h-9 items-center justify-center gap-1 rounded-full text-[13px]"
-        >
-          <MapPinOff className="size-[18px]" /> Close
-        </button>
       </div>
     </aside>
   )

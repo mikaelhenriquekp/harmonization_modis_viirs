@@ -1,16 +1,15 @@
-import { ChevronRight, Flame, TriangleAlert } from 'lucide-react'
+import { Flame, TriangleAlert } from 'lucide-react'
 import { lazy, Suspense, useMemo, useState } from 'react'
-import { Link } from 'react-router'
 
-import { BigNumber, Card } from '@/components/card'
+import { BigNumber, Card, Delta } from '@/components/card'
 import type { GlobePin } from '@/components/globe/globe'
 import { DropPanel } from '@/components/home/drop-panel'
-import { MonthCards, ProgressRings, SeasonPulse } from '@/components/home/home-cards'
+import { Coverage, MonthCards, SeasonPulse } from '@/components/home/home-cards'
 import { ErrorState, Skeleton } from '@/components/state'
 import { useAnomalyMap, useCalendar, useCoverage, useFireMap } from '@/hooks/use-fire'
 import { WORLD } from '@/lib/area'
-import { formatCount, formatMonth, formatSignedPct } from '@/lib/format'
-import { yearSoFar } from '@/lib/insights'
+import { formatCount, formatMonth, formatSignedPct, monthName } from '@/lib/format'
+import { monthVsLastYear, yearSoFar } from '@/lib/insights'
 
 const Globe = lazy(() => import('@/components/globe/globe').then((m) => ({ default: m.Globe })))
 
@@ -46,6 +45,7 @@ export function HomePage() {
 
   const cal = world.data?.calendar
   const ys = cal ? yearSoFar(cal) : null
+  const thisMonth = cal ? monthVsLastYear(cal) : null
   const unusual = (anomalies.data?.counts.much_above ?? 0) + (anomalies.data?.counts.above ?? 0)
   const pick = (lat: number, lon: number) => setDrop({ lat, lon })
 
@@ -59,45 +59,56 @@ export function HomePage() {
           >
             Global fire activity
           </h1>
-          <div className="mt-6 flex items-center gap-3">
-            <p className="font-semibold">Harmonized hotspots{ys ? ` in ${ys.year}` : ''}</p>
-            <Link
-              to="/analysis?area=world&name=The%20whole%20world#calendar"
-              className="eyebrow hover:text-bone flex items-center gap-0.5"
-            >
-              Detail <ChevronRight className="size-3" />
-            </Link>
-          </div>
+          <p className="text-soft mt-6 text-[14px]">
+            Harmonized hotspots{ys ? `, ${ys.year} so far` : ''}
+          </p>
           {ys ? (
-            <BigNumber className="mt-1 text-[40px] leading-tight sm:text-[44px]">
-              {formatCount(ys.value)}
-            </BigNumber>
+            <div className="mt-1 flex items-baseline gap-3">
+              <BigNumber className="text-[40px] leading-tight sm:text-[44px]">
+                {formatCount(ys.value)}
+              </BigNumber>
+              <Delta pct={ys.changePct} className="text-[13px]" />
+            </div>
           ) : (
             <Skeleton className="mt-2 h-12 w-56" />
           )}
+          {ys && ys.changePct !== null && (
+            <p className="text-mute text-[12px]">
+              vs an average {monthName(1, 'short')}–{monthName(ys.months, 'short')}
+            </p>
+          )}
           <ul className="mt-6 space-y-4">
             <li className="flex items-center gap-4">
-              <span className="bg-garnet grid size-12 place-items-center rounded-[14px]">
-                <TriangleAlert className="size-5" />
+              <span className="bg-saffron text-on-accent grid size-12 shrink-0 place-items-center rounded-[14px]">
+                <Flame className="size-5" fill="currentColor" />
               </span>
               <div>
                 <p className="text-soft text-[14px]">
-                  Places with unusual fire
-                  {anomalies.data ? `, ${formatMonth(anomalies.data.month, 'short')}` : ''}
+                  {thisMonth ? `${formatMonth(thisMonth.month)} so far` : 'This month so far'}
                 </p>
-                <p className="num font-mono font-semibold">
-                  {anomalies.data ? `${formatCount(unusual)} cells` : '…'}
+                <p className="flex items-baseline gap-2">
+                  <span className="num font-mono font-semibold">
+                    {thisMonth ? formatCount(thisMonth.value) : '…'}
+                  </span>
+                  {thisMonth && (
+                    <span className="text-mute text-[12px]">
+                      <Delta pct={thisMonth.changePct} /> vs last year
+                    </span>
+                  )}
                 </p>
               </div>
             </li>
             <li className="flex items-center gap-4">
-              <span className="bg-saffron grid size-12 place-items-center rounded-[14px] text-[#100d0f]">
-                <Flame className="size-5" fill="currentColor" />
+              <span className="bg-garnet grid size-12 shrink-0 place-items-center rounded-[14px]">
+                <TriangleAlert className="size-5" />
               </span>
               <div>
-                <p className="text-soft text-[14px]">This month so far</p>
+                <p className="text-soft text-[14px]">
+                  Places with more fire than usual
+                  {anomalies.data ? ` in ${monthName(Number(anomalies.data.month.slice(5)))}` : ''}
+                </p>
                 <p className="num font-mono font-semibold">
-                  {fire.data ? formatCount(fire.data.total_hotspots) : '…'}
+                  {anomalies.data ? formatCount(unusual) : '…'}
                 </p>
               </div>
             </li>
@@ -144,12 +155,11 @@ export function HomePage() {
           )}
         </section>
 
-        <section aria-label="Progress" className="lg:col-start-3 lg:row-start-3 lg:self-end">
-          {cal && (
-            <ProgressRings
-              calendar={cal}
-              harmonized={coverage.data?.regions.harmonized}
-              total={coverage.data?.regions.total}
+        <section aria-label="Coverage" className="lg:col-start-3 lg:row-start-3 lg:self-end">
+          {coverage.data && coverage.data.regions.total > 0 && (
+            <Coverage
+              harmonized={coverage.data.regions.harmonized}
+              total={coverage.data.regions.total}
             />
           )}
         </section>

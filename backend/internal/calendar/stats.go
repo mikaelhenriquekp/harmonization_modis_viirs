@@ -369,7 +369,28 @@ func buildCurrent(months []MonthStat, now time.Time) *Current {
 		}
 	}
 	c.YearsCompared = len(past)
-	c.Rank = 1
+	cmp := Compare(past, value)
+	c.Median, c.AnomalyPct, c.Percentile, c.Rank, c.Status = cmp.Median, cmp.AnomalyPct, cmp.Percentile, cmp.Rank, cmp.Status
+	if cmp.Median != nil {
+		c.ExpectedByNow = ptr(*cmp.Median * elapsed)
+	}
+	return c
+}
+
+// Comparison places a value among the same month of past years.
+type Comparison struct {
+	Median     *float64
+	AnomalyPct *float64
+	Percentile *float64
+	Rank       int // 1 = above every past year
+	Status     string
+}
+
+// Compare classifies a value against past values: much_above at or above the
+// 90th percentile, above from the 75th, below up to the 25th, much_below up
+// to the 10th, normal otherwise.
+func Compare(past []float64, value float64) Comparison {
+	c := Comparison{Rank: 1, Status: StatusNoHistory}
 	for _, v := range past {
 		if v > value && !equal(v, value) {
 			c.Rank++
@@ -378,9 +399,8 @@ func buildCurrent(months []MonthStat, now time.Time) *Current {
 	if len(past) == 0 {
 		return c
 	}
-	md := median(sorted(past))
+	md := median(past)
 	c.Median = ptr(md)
-	c.ExpectedByNow = ptr(md * elapsed)
 	if md > 0 {
 		c.AnomalyPct = ptr((value - md) / md * 100)
 	}

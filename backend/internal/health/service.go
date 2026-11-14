@@ -1,4 +1,4 @@
-// Package health implements the health check feature (handler → service → repository).
+// Package health implements the health check endpoint.
 package health
 
 import (

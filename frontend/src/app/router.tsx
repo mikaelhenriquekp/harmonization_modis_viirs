@@ -1,9 +1,19 @@
 import { createBrowserRouter } from 'react-router'
 
-import { HomePage } from '@/pages/home-page'
+import { AppShell } from '@/components/app-shell'
+import { AboutPage } from '@/pages/about-page'
+import { ExplorePage } from '@/pages/explore-page'
 import { NotFoundPage } from '@/pages/not-found-page'
+import { ValidationPage } from '@/pages/validation-page'
 
 export const router = createBrowserRouter([
-  { path: '/', element: <HomePage /> },
-  { path: '*', element: <NotFoundPage /> },
+  {
+    element: <AppShell />,
+    children: [
+      { path: '/', element: <ExplorePage /> },
+      { path: '/validation', element: <ValidationPage /> },
+      { path: '/about', element: <AboutPage /> },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
 ])

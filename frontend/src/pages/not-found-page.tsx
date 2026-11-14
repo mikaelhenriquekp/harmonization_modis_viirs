@@ -1,14 +1,15 @@
 import { Link } from 'react-router'
 
-import { Button } from '@/components/ui/button'
+import { Mascot } from '@/components/mascot'
 
 export function NotFoundPage() {
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center gap-4 p-6">
-      <h1 className="text-2xl font-semibold">Page not found</h1>
-      <Button asChild variant="outline">
-        <Link to="/">Go home</Link>
-      </Button>
-    </main>
+    <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-6 py-20 text-center">
+      <Mascot mood="curious" label="The mascot looks lost" className="w-40" />
+      <h1 className="text-2xl font-semibold">This page is not on the map</h1>
+      <Link to="/" className="bg-gold rounded-full px-4 py-2 text-sm font-medium text-[#03133f]">
+        Back to exploring
+      </Link>
+    </div>
   )
 }

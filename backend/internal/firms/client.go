@@ -3,11 +3,13 @@ package firms
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -23,6 +25,10 @@ const MaxDays = 5
 // ErrNotFound means the archive has no such file.
 var ErrNotFound = errors.New("firms: not found")
 
+// ErrLimit means the MAP_KEY used up its transactions for the current
+// 10 minute window, and waiting did not help.
+var ErrLimit = errors.New("firms: transaction limit exceeded")
+
 // Client talks to FIRMS.
 type Client struct {
 	BaseURL   string
@@ -30,6 +36,10 @@ type Client struct {
 	HTTP      *http.Client
 	Retries   int
 	RetryWait time.Duration
+	// LimitWait is how long to wait when the key hits its transaction limit,
+	// up to LimitRetries times (FIRMS counts transactions per 10 minutes).
+	LimitWait    time.Duration
+	LimitRetries int
 }
 
 // NewClient builds a client. The key is only needed for the area API.
@@ -43,8 +53,10 @@ func NewClient(mapKey string) *Client {
 			ResponseHeaderTimeout: 2 * time.Minute,
 			MaxIdleConnsPerHost:   8,
 		}},
-		Retries:   4,
-		RetryWait: 2 * time.Second,
+		Retries:      4,
+		RetryWait:    2 * time.Second,
+		LimitWait:    time.Minute,
+		LimitRetries: 12,
 	}
 }
 
@@ -52,21 +64,40 @@ func NewClient(mapKey string) *Client {
 // errors with exponential backoff.
 func (c *Client) get(ctx context.Context, path string, read func(io.Reader) error) error {
 	var last error
+	limited := 0
 	for attempt := 0; attempt <= c.Retries; attempt++ {
 		if attempt > 0 {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(c.RetryWait << (attempt - 1)):
+			if err := sleep(ctx, c.RetryWait<<(attempt-1)); err != nil {
+				return err
 			}
 		}
 		retry, err := c.try(ctx, path, read)
+		if errors.Is(err, ErrLimit) {
+			if limited >= c.LimitRetries {
+				return err
+			}
+			limited++
+			attempt-- // waiting out the limit is not a failed attempt
+			if err := sleep(ctx, c.LimitWait); err != nil {
+				return err
+			}
+			continue
+		}
 		if err == nil || !retry {
 			return err
 		}
 		last = err
 	}
 	return last
+}
+
+func sleep(ctx context.Context, d time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(d):
+		return nil
+	}
 }
 
 func (c *Client) try(ctx context.Context, path string, read func(io.Reader) error) (retry bool, err error) {
@@ -86,7 +117,11 @@ func (c *Client) try(ctx context.Context, path string, read func(io.Reader) erro
 		return true, fmt.Errorf("get %s: status %d", redact(path), resp.StatusCode)
 	case resp.StatusCode >= 400:
 		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return false, fmt.Errorf("%w: %s (status %d)", ErrAPI, strings.TrimSpace(string(msg)), resp.StatusCode)
+		text := strings.TrimSpace(string(msg))
+		if strings.Contains(strings.ToLower(text), "transaction limit") {
+			return false, fmt.Errorf("%w: %s", ErrLimit, text)
+		}
+		return false, fmt.Errorf("%w: %s (status %d)", ErrAPI, text, resp.StatusCode)
 	}
 	if err := read(resp.Body); err != nil {
 		var netErr net.Error
@@ -100,6 +135,9 @@ func (c *Client) try(ctx context.Context, path string, read func(io.Reader) erro
 
 // redact keeps the MAP_KEY out of errors and logs.
 func redact(path string) string {
+	if i := strings.Index(path, "MAP_KEY="); i >= 0 {
+		path = path[:i] + "MAP_KEY=***"
+	}
 	parts := strings.Split(path, "/")
 	for i, p := range parts {
 		if i > 0 && (parts[i-1] == "csv") && len(p) == 32 {
@@ -168,6 +206,24 @@ func (c *Client) AreaRange(ctx context.Context, source, area string, from, to ti
 		}
 	}
 	return nil
+}
+
+// KeyStatus is the MAP_KEY's use of its transactions in the current window.
+type KeyStatus struct {
+	Limit   int `json:"transaction_limit"`
+	Current int `json:"current_transactions"`
+}
+
+// KeyStatus reads how many transactions the key has used.
+func (c *Client) KeyStatus(ctx context.Context) (KeyStatus, error) {
+	var st KeyStatus
+	err := c.get(ctx, "/mapserver/mapkey_status/?MAP_KEY="+url.QueryEscape(c.MapKey), func(r io.Reader) error {
+		if err := json.NewDecoder(r).Decode(&st); err != nil {
+			return fmt.Errorf("%w: %w", ErrAPI, err)
+		}
+		return nil
+	})
+	return st, err
 }
 
 // DateRange is the period a source covers.

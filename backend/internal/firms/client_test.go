@@ -214,3 +214,42 @@ func TestAvailability(t *testing.T) {
 		t.Errorf("availability = %+v", got)
 	}
 }
+
+func TestWaitsOutTheTransactionLimit(t *testing.T) {
+	var calls atomic.Int32
+	c := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		if calls.Add(1) < 3 {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, "Exceeding allowed transaction limit.")
+			return
+		}
+		fmt.Fprint(w, viirsCSV)
+	})
+	c.LimitWait = time.Millisecond
+	n := 0
+	err := c.Area(t.Context(), "VIIRS_SNPP_SP", "world", Window{Start: day("2025-08-01"), Days: 1}, func(harmonize.Detection) error { n++; return nil })
+	if err != nil || n != 2 || calls.Load() != 3 {
+		t.Errorf("n=%d calls=%d err=%v", n, calls.Load(), err)
+	}
+
+	c.LimitRetries = 1
+	calls.Store(0)
+	err = c.Area(t.Context(), "VIIRS_SNPP_SP", "world", Window{Start: day("2025-08-01"), Days: 1}, func(harmonize.Detection) error { return nil })
+	if !errors.Is(err, ErrLimit) {
+		t.Errorf("err = %v, want ErrLimit", err)
+	}
+}
+
+func TestKeyStatus(t *testing.T) {
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/mapserver/mapkey_status/" || r.URL.Query().Get("MAP_KEY") != "KEY" {
+			http.NotFound(w, r)
+			return
+		}
+		fmt.Fprint(w, `{ "transaction_limit" : 5000, "current_transactions": 4865, "transaction_interval" : "10 minutes" }`)
+	})
+	got, err := c.KeyStatus(t.Context())
+	if err != nil || got.Limit != 5000 || got.Current != 4865 {
+		t.Errorf("got %+v, %v", got, err)
+	}
+}

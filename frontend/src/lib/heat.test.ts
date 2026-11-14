@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { anomalyClass, heatColor, heatInk, heatSteps } from './heat'
+import { anomalyClass, heatColor, heatFor, heatInk, heatSteps } from './heat'
 
 describe('heat', () => {
   it('maps zero to the empty step and spreads classes over the six fire steps', () => {
@@ -12,9 +12,10 @@ describe('heat', () => {
     expect(heatColor(-1, 7)).toBe('transparent')
   })
 
-  it('writes dark numbers on bright cells and light numbers on dark ones', () => {
-    expect(heatInk(6, 6)).toBe('var(--on-accent)')
-    expect(heatInk(1, 6)).toBe('var(--bone)')
+  it('picks the ink of each half of the ramp', () => {
+    expect(heatInk(6, 6)).toBe('var(--heat-ink-hi)')
+    expect(heatInk(1, 6)).toBe('var(--heat-ink-lo)')
+    expect(heatInk(0, 6)).toBe('var(--bone)')
   })
 
   it('classifies a month against the same month of other years', () => {
@@ -24,5 +25,13 @@ describe('heat', () => {
     expect(anomalyClass(0.2)).toBe('below')
     expect(anomalyClass(0.05)).toBe('much_below')
     expect(anomalyClass(null)).toBe('no_history')
+  })
+})
+
+describe('heatFor', () => {
+  it('only uses the six steps that exist', () => {
+    expect(heatFor(1000, 1000)).toBe('var(--heat-6)')
+    expect(heatFor(1, 1000)).toBe('var(--heat-1)')
+    expect(heatFor(0, 1000)).toBe('var(--heat-1)')
   })
 })

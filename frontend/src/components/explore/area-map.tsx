@@ -1,5 +1,5 @@
 import L from 'leaflet'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Circle,
   CircleMarker,
@@ -14,22 +14,49 @@ import {
 } from 'react-leaflet'
 
 import type { AnomalyCell, MapResponse } from '@/api/types'
+import { useMode } from '@/hooks/use-mode'
 import { areaBounds, type Area, type Bounds } from '@/lib/area'
-import type { DrawingAction, DrawingState } from '@/lib/drawing'
+import { gibsUrl, hasImagery, type Basemap } from '@/lib/basemaps'
+import { footprint, frpColor, type Detection } from '@/lib/detections'
+import { initialDrawing, type DrawingAction, type DrawingState } from '@/lib/drawing'
 import { formatCount, formatSignedPct } from '@/lib/format'
+import { heatFor } from '@/lib/heat'
 import { TONE_COLOR, statusMeta } from '@/lib/status'
 
-export type MapLayer = 'fire' | 'anomalies' | 'none'
+export type MapLayer = 'fire' | 'anomalies' | 'detections' | 'none'
+
+/** Where a map is looking, to keep two maps in step. */
+export interface MapView {
+  lat: number
+  lon: number
+  zoom: number
+}
+
+/** From this zoom on, a 375 m pixel is big enough to draw as its footprint. */
+export const FOOTPRINT_ZOOM = 11
 
 interface AreaMapProps {
   area: Area
-  drawing: DrawingState
-  dispatch: (a: DrawingAction) => void
+  drawing?: DrawingState
+  dispatch?: (a: DrawingAction) => void
   layer: MapLayer
   fire?: MapResponse
   anomalies?: AnomalyCell[]
+  /** Individual detections, for the `detections` layer. */
+  detections?: Detection[]
+  /** Hotspots of the brightest cell; pass the same to two maps to compare them. */
+  scaleMax?: number
+  /** Satellite imagery under the data, and its day (YYYY-MM-DD). */
+  basemap?: Basemap
+  imageryDay?: string
+  /** A tap on the map while no drawing tool is active. */
+  onPick?: (lat: number, lon: number) => void
+  view?: MapView
+  onView?: (v: MapView) => void
   className?: string
 }
+
+const noop = () => {}
 
 // Esri Canvas basemaps: muted, so the fire stands out, and usable without a key.
 const TILES = {
@@ -57,19 +84,101 @@ function FitArea({ area }: { area: Area }) {
 function Taps({
   drawing,
   dispatch,
+  onPick,
 }: {
   drawing: DrawingState
   dispatch: (a: DrawingAction) => void
+  onPick?: (lat: number, lon: number) => void
 }) {
   const map = useMapEvents({
     click(e) {
-      dispatch({ type: 'tap', lat: e.latlng.lat, lon: e.latlng.lng })
+      // Leaflet repeats the world sideways: bring the longitude back to ±180
+      const { lat, lng } = e.latlng.wrap()
+      if (drawing.tool) dispatch({ type: 'tap', lat, lon: lng })
+      else onPick?.(lat, lng)
     },
   })
   useEffect(() => {
-    map.getContainer().style.cursor = drawing.tool ? 'crosshair' : ''
-  }, [map, drawing.tool])
+    map.getContainer().style.cursor = drawing.tool || onPick ? 'crosshair' : ''
+  }, [map, drawing.tool, onPick])
   return null
+}
+
+/** Reports the view and follows the one it is given, so two maps move together. */
+function SyncView({ view, onView }: { view?: MapView; onView?: (v: MapView) => void }) {
+  // moves this component makes itself are not reported back, or two maps would chase each other
+  const applying = useRef(false)
+  const map = useMapEvents({
+    moveend() {
+      if (applying.current) return
+      const c = map.getCenter()
+      onView?.({ lat: c.lat, lon: c.lng, zoom: map.getZoom() })
+    },
+  })
+  useEffect(() => {
+    if (!view) return
+    const c = map.getCenter()
+    const same =
+      Math.abs(c.lat - view.lat) < 1e-6 &&
+      Math.abs(c.lng - view.lon) < 1e-6 &&
+      map.getZoom() === view.zoom
+    if (same) return
+    applying.current = true
+    map.setView([view.lat, view.lon], view.zoom, { animate: false })
+    applying.current = false
+  }, [map, view])
+  return null
+}
+
+function useZoom(): number {
+  const map = useMap()
+  const [zoom, setZoom] = useState(() => map.getZoom())
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
+  return zoom
+}
+
+/** Each detection: a dot from afar, the ground its pixel covers from close. */
+function Detections({ items, css }: { items: Detection[]; css: (v: string) => string }) {
+  const zoom = useZoom()
+  const renderer = useMemo(() => L.canvas({ padding: 0.3 }), [])
+  return items.map((d, i) => {
+    const color = css(frpColor(d.frp))
+    const tip = (
+      <Tooltip>
+        {d.date} {d.time.slice(0, 2)}:{d.time.slice(2)} UTC · {d.satellite} ·{' '}
+        {d.pass === 'D' ? 'day pass' : d.pass === 'N' ? 'night pass' : 'pass unknown'}
+        <br />
+        {d.frp !== null ? `${formatCount(d.frp)} MW` : 'no FRP'} · confidence {d.confidence}
+        {d.scanKm !== null && d.trackKm !== null && (
+          <>
+            {' '}
+            · pixel {Math.round(d.scanKm * 1000)} × {Math.round(d.trackKm * 1000)} m
+          </>
+        )}
+        {d.provisional && ' · provisional'}
+      </Tooltip>
+    )
+    return zoom >= FOOTPRINT_ZOOM ? (
+      <Rectangle
+        key={i}
+        bounds={footprint(d)}
+        renderer={renderer}
+        pathOptions={{ color, weight: 1, fillColor: color, fillOpacity: 0.55 }}
+      >
+        {tip}
+      </Rectangle>
+    ) : (
+      <CircleMarker
+        key={i}
+        center={[d.lat, d.lon]}
+        radius={3}
+        renderer={renderer}
+        pathOptions={{ stroke: false, fillColor: color, fillOpacity: 0.9 }}
+      >
+        {tip}
+      </CircleMarker>
+    )
+  })
 }
 
 function AreaShape({ area }: { area: Area }) {
@@ -104,26 +213,31 @@ function AreaShape({ area }: { area: Area }) {
   }
 }
 
-function heatFor(v: number, max: number): string {
-  const step = Math.min(7, Math.max(1, Math.ceil((Math.sqrt(v / max) || 0) * 7)))
-  return `var(--heat-${step})`
-}
-
 /** The map: the chosen area, the drawing in progress and a fire layer. */
 export function AreaMap({
   area,
-  drawing,
-  dispatch,
+  drawing = initialDrawing,
+  dispatch = noop,
   layer,
   fire,
   anomalies,
+  detections,
+  scaleMax,
+  basemap,
+  imageryDay,
+  onPick,
+  view,
+  onView,
   className,
 }: AreaMapProps) {
   const renderer = useMemo(() => L.canvas({ padding: 0.3 }), [])
+  const [mode] = useMode()
   // CSS variables do not reach the canvas: resolve them.
   const style = getComputedStyle(document.documentElement)
   const css = (v: string) =>
     v.startsWith('var(') ? style.getPropertyValue(v.slice(4, -1)).trim() || '#f0933a' : v
+  const imagery = basemap && imageryDay && hasImagery(basemap, imageryDay) ? basemap : null
+  const max = Math.max(scaleMax ?? fire?.max_hotspots ?? 1, 1)
 
   return (
     <MapContainer
@@ -135,20 +249,36 @@ export function AreaMap({
       attributionControl
       preferCanvas
     >
-      <TileLayer url={TILES.dark} attribution={TILE_ATTRIBUTION} maxZoom={16} />
-      <FitArea area={area} />
-      <Taps drawing={drawing} dispatch={dispatch} />
+      {/* the key makes Leaflet swap the tiles when the mode changes */}
+      <TileLayer
+        key={mode}
+        url={mode === 'day' ? TILES.light : TILES.dark}
+        attribution={TILE_ATTRIBUTION}
+        maxZoom={16}
+      />
+      {imagery && (
+        <TileLayer
+          key={`${imagery.id}-${imageryDay}`}
+          url={gibsUrl(imagery, imageryDay!)}
+          attribution="Imagery: NASA GIBS / ESDIS"
+          maxNativeZoom={imagery.level}
+          maxZoom={16}
+        />
+      )}
+      {!view && <FitArea area={area} />}
+      <Taps drawing={drawing} dispatch={dispatch} onPick={onPick} />
+      {(view || onView) && <SyncView view={view} onView={onView} />}
 
       {layer === 'fire' &&
         fire?.cells.map(([lat, lon, h]) => (
           <CircleMarker
             key={`${lat},${lon}`}
             center={[lat, lon]}
-            radius={2 + 7 * Math.sqrt(h / Math.max(fire.max_hotspots, 1))}
+            radius={2 + 7 * Math.min(1, Math.sqrt(h / max))}
             renderer={renderer}
             pathOptions={{
               stroke: false,
-              fillColor: css(heatFor(h, fire.max_hotspots)),
+              fillColor: css(heatFor(h, max)),
               fillOpacity: 0.85,
             }}
             interactive={false}
@@ -175,6 +305,8 @@ export function AreaMap({
               </Tooltip>
             </CircleMarker>
           ))}
+
+      {layer === 'detections' && detections && <Detections items={detections} css={css} />}
 
       {!drawing.tool && <AreaShape area={area} />}
       {drawing.points.length > 0 && (

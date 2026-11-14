@@ -6,6 +6,8 @@ import eyesHalf from '@/assets/mascot/eyes-half.png'
 import eyesHappy from '@/assets/mascot/eyes-happy.png'
 import eyesOpen from '@/assets/mascot/eyes-open.png'
 import mouthFrown from '@/assets/mascot/mouth-frown.png'
+import mouthLarge from '@/assets/mascot/mouth-large.png'
+import mouthMedium from '@/assets/mascot/mouth-medium.png'
 import mouthO from '@/assets/mascot/mouth-o.png'
 import mouthRest from '@/assets/mascot/mouth-rest.png'
 import mouthSmall from '@/assets/mascot/mouth-small.png'
@@ -52,23 +54,39 @@ function useBlink(enabled: boolean): boolean {
   return closed
 }
 
+const TALK = [mouthSmall, mouthMedium, mouthLarge, mouthMedium, mouthSmall, mouthRest]
+
+/** Moves the mouth through the talking frames while `on`. */
+function useTalk(on: boolean): string | null {
+  const [frame, setFrame] = useState(0)
+  useEffect(() => {
+    if (!on || reducedMotion()) return
+    const timer = setInterval(() => setFrame((f) => (f + 1) % TALK.length), 110)
+    return () => clearInterval(timer)
+  }, [on])
+  return on && !reducedMotion() ? TALK[frame] : null
+}
+
 interface MascotProps {
   mood: Mood
+  /** Moves the mouth, as if speaking. */
+  talking?: boolean
   /** Describes the mascot for screen readers. */
   label: string
   className?: string
 }
 
 /** The paparajote astronaut, reacting to the fire situation. */
-export function Mascot({ mood, label, className }: MascotProps) {
+export function Mascot({ mood, talking = false, label, className }: MascotProps) {
   const face = FACES[mood]
   const blinking = useBlink(face.eyes === eyesOpen)
+  const speaking = useTalk(talking)
   const layer = 'absolute inset-0 size-full select-none'
   return (
     <div role="img" aria-label={label} className={cn('relative aspect-square', className)}>
       <img src={base} alt="" className={layer} draggable={false} />
       <img src={blinking ? eyesClosed : face.eyes} alt="" className={layer} draggable={false} />
-      <img src={face.mouth} alt="" className={layer} draggable={false} />
+      <img src={speaking ?? face.mouth} alt="" className={layer} draggable={false} />
     </div>
   )
 }

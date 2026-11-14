@@ -1,93 +1,74 @@
-import { CalendarDays, Download, Earth, FlaskConical, Info, Satellite, Waves } from 'lucide-react'
+import {
+  CalendarDays,
+  FlaskConical,
+  Globe2,
+  History,
+  Info,
+  LayoutDashboard,
+  Moon,
+  Sun,
+} from 'lucide-react'
 import { useEffect, type ComponentType } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 
 import head from '@/assets/mascot/head.png'
+import { Guide } from '@/components/guide/guide'
+import { useMode } from '@/hooks/use-mode'
 import { cn } from '@/lib/utils'
 
 interface NavItem {
   to: string
   label: string
   icon: ComponentType<{ className?: string }>
-  /** Section of the analysis page, matched against the URL hash. */
-  section?: string
 }
 
-/** The rail of the wireframe: the globe, then the sections of the analysis. */
 const NAV: NavItem[] = [
-  { to: '/', label: 'Globe', icon: Earth },
-  { to: '/analysis#calendar', label: 'Calendar', icon: CalendarDays, section: 'calendar' },
-  { to: '/analysis#anomalies', label: 'Anomalies', icon: Waves, section: 'anomalies' },
-  { to: '/analysis#sensors', label: 'Sensors', icon: Satellite, section: 'sensors' },
-  { to: '/analysis#downloads', label: 'Downloads', icon: Download, section: 'downloads' },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/compare', label: 'Time machine', icon: History },
+  { to: '/analysis', label: 'Analysis', icon: CalendarDays },
+  { to: '/globe', label: 'Globe', icon: Globe2 },
   { to: '/method', label: 'Method', icon: FlaskConical },
+  { to: '/about', label: 'About', icon: Info },
 ]
 
-function useActiveKey(): string {
-  const { pathname, hash } = useLocation()
-  if (pathname === '/analysis') return hash.slice(1) || 'calendar'
-  if (pathname === '/method') return 'method'
-  if (pathname === '/about') return 'about'
-  return pathname === '/' ? 'area' : ''
-}
-
-function keyOf(n: NavItem): string {
-  return n.section ?? (n.to === '/' ? 'area' : n.to.slice(1))
-}
-
-/** Keeps the search (area, period) when moving between views. */
-function useSearch(): string {
-  return useLocation().search
-}
-
-function RailLink({
-  item,
-  active,
-  search,
-  compact,
-}: {
-  item: NavItem
-  active: boolean
-  search: string
-  compact?: boolean
-}) {
-  const Icon = item.icon
-  const [path, hash] = item.to.split('#')
+/** Night and day: the theme, and the satellite pass the 375 m layer shows. */
+function ModeSwitch() {
+  const [mode, setMode] = useMode()
   return (
-    <NavLink
-      to={{ pathname: path, search, hash: hash ? `#${hash}` : '' }}
-      aria-current={active ? 'page' : undefined}
-      className={cn(
-        'group flex flex-col items-center gap-1',
-        compact ? 'min-w-0 flex-1 py-1.5' : 'w-full py-2',
-      )}
+    <div
+      role="group"
+      aria-label="Day or night mode"
+      className="border-line flex shrink-0 rounded-full border p-0.5"
     >
-      <span
-        className={cn(
-          'grid place-items-center rounded-full transition-colors',
-          compact ? 'h-7 w-11' : 'h-8 w-14',
-          active ? 'bg-saffron-soft text-saffron' : 'text-soft group-hover:text-bone',
-        )}
-      >
-        <Icon className="size-[18px]" />
-      </span>
-      <span
-        className={cn(
-          'text-[11px] leading-none',
-          compact && 'text-[10px]',
-          active ? 'text-bone font-semibold' : 'text-mute',
-        )}
-      >
-        {item.label}
-      </span>
-    </NavLink>
+      {(
+        [
+          ['day', 'Day', Sun],
+          ['night', 'Night', Moon],
+        ] as const
+      ).map(([value, label, Icon]) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={mode === value}
+          onClick={() => setMode(value)}
+          title={`${label} mode: ${value === 'day' ? 'light' : 'dark'} theme and ${value} passes on the 375 m layer`}
+          className={cn(
+            'flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold',
+            mode === value ? 'bg-saffron text-[#100d0f]' : 'text-soft hover:text-bone',
+          )}
+        >
+          <Icon className="size-4" />
+          <span className="hidden sm:inline">{label}</span>
+          <span className="sr-only sm:hidden">{label}</span>
+        </button>
+      ))}
+    </div>
   )
 }
 
 export function AppShell() {
-  const active = useActiveKey()
-  const search = useSearch()
-  const { pathname, hash } = useLocation()
+  // keeps the place and the period when moving between views
+  const { pathname, hash, search } = useLocation()
 
   // links to a section scroll to it
   useEffect(() => {
@@ -100,57 +81,60 @@ export function AppShell() {
   }, [pathname, hash])
 
   return (
-    <div className="min-h-svh md:pl-[88px]">
+    <div className="min-h-svh">
       <a
         href="#main"
-        className="sr-only rounded-md bg-saffron px-3 py-2 text-on-accent focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1000]"
+        className="sr-only rounded-md bg-saffron px-3 py-2 text-[#100d0f] focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1000]"
       >
         Skip to content
       </a>
 
-      <aside
-        aria-label="Main"
-        className="bg-rail border-line fixed inset-y-0 left-0 z-[600] hidden w-[88px] flex-col items-center border-r py-5 md:flex"
-      >
-        <NavLink
-          to={{ pathname: '/', search }}
-          className="mb-6 flex flex-col items-center gap-1"
-          aria-label="Ctrl + Fire, home"
-        >
-          <span className="bg-card-2 grid size-12 place-items-center rounded-[14px]">
-            <img src={head} alt="" className="size-10" />
-          </span>
-          <span className="text-[11px] font-semibold whitespace-nowrap">Ctrl + Fire</span>
-        </NavLink>
-        <nav className="flex w-full flex-col items-center gap-2">
-          {NAV.map((n) => (
-            <RailLink key={n.label} item={n} active={active === keyOf(n)} search={search} />
-          ))}
-        </nav>
-        <NavLink
-          to={{ pathname: '/about', search }}
-          className={cn(
-            'mt-auto grid size-10 place-items-center rounded-full',
-            active === 'about' ? 'bg-saffron-soft text-saffron' : 'text-soft hover:text-bone',
-          )}
-          aria-label="About"
-        >
-          <Info className="size-5" />
-        </NavLink>
-      </aside>
+      <header className="bg-rail border-line border-b">
+        <div className="mx-auto flex max-w-[1720px] items-center gap-3 px-3 py-2 sm:px-5">
+          <NavLink
+            to={{ pathname: '/', search }}
+            className="flex shrink-0 items-center gap-2.5"
+            aria-label="Fire Atlas by Paparajote Lunar, dashboard"
+          >
+            <span className="bg-card-2 grid size-10 place-items-center rounded-[12px]">
+              <img src={head} alt="" className="size-8" />
+            </span>
+            <span className="hidden leading-none sm:block">
+              <span className="block text-[15px] font-bold tracking-[0.08em]">FIRE ATLAS</span>
+              <span className="text-mute mt-1 block font-mono text-[10px] tracking-[0.06em] uppercase">
+                Paparajote Lunar
+              </span>
+            </span>
+          </NavLink>
+          <nav aria-label="Main" className="flex min-w-0 flex-1 gap-1 overflow-x-auto sm:ml-4">
+            {NAV.map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={{ pathname: to, search }}
+                end={to === '/'}
+                className={({ isActive }) =>
+                  cn(
+                    'flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] whitespace-nowrap transition-colors',
+                    isActive
+                      ? 'bg-saffron-soft text-saffron font-semibold'
+                      : 'text-soft hover:text-bone',
+                  )
+                }
+              >
+                <Icon className="size-4" />
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+          <ModeSwitch />
+        </div>
+      </header>
 
-      <main id="main" className="pb-20 md:pb-0">
+      <main id="main" className="pb-20">
         <Outlet />
       </main>
 
-      <nav
-        aria-label="Main"
-        className="bg-rail/95 border-line fixed inset-x-0 bottom-0 z-[600] flex border-t px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
-      >
-        {NAV.map((n) => (
-          <RailLink key={n.label} item={n} active={active === keyOf(n)} search={search} compact />
-        ))}
-      </nav>
+      <Guide />
     </div>
   )
 }

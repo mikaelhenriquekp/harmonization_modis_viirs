@@ -21,7 +21,10 @@ export function heatColor(cls: number, n: number): string {
 
 /** Readable number color on a calendar cell. */
 export function heatInk(cls: number, n: number): string {
-  return step(cls, n) >= 4 ? 'var(--on-accent)' : 'var(--bone)'
+  const s = step(cls, n)
+  if (s === 0) return 'var(--bone)'
+  // the ramp runs dark to bright at night and pale to dark by day: the theme sets both inks
+  return s >= 4 ? 'var(--heat-ink-hi)' : 'var(--heat-ink-lo)'
 }
 
 /** A month's place among the same month of every year, as a status. */
@@ -41,4 +44,10 @@ export const ANOMALY_COLOR: Record<Status, string> = {
   below: 'var(--anom-below)',
   much_below: 'var(--anom-much-below)',
   no_history: 'var(--anom-none)',
+}
+
+/** A map cell's colour: the six fire steps, by the square root of its share of the maximum. */
+export function heatFor(v: number, max: number): string {
+  const step = Math.min(6, Math.max(1, Math.ceil((Math.sqrt(v / max) || 0) * 6)))
+  return `var(--heat-${step})`
 }

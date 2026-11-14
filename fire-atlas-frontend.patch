@@ -1,0 +1,3617 @@
+diff --git a/frontend/src/app/router.tsx b/frontend/src/app/router.tsx
+index 3f0bda8..4f5659b 100644
+--- a/frontend/src/app/router.tsx
++++ b/frontend/src/app/router.tsx
+@@ -3,7 +3,9 @@ import { createBrowserRouter } from 'react-router'
+ import { AppShell } from '@/components/app-shell'
+ import { AboutPage } from '@/pages/about-page'
+ import { AnalysisPage } from '@/pages/analysis-page'
+-import { HomePage } from '@/pages/home-page'
++import { ComparePage } from '@/pages/compare-page'
++import { DashboardPage } from '@/pages/dashboard-page'
++import { GlobePage } from '@/pages/globe-page'
+ import { MethodPage } from '@/pages/method-page'
+ import { NotFoundPage } from '@/pages/not-found-page'
+ 
+@@ -11,7 +13,9 @@ export const router = createBrowserRouter([
+   {
+     element: <AppShell />,
+     children: [
+-      { path: '/', element: <HomePage /> },
++      { path: '/', element: <DashboardPage /> },
++      { path: '/globe', element: <GlobePage /> },
++      { path: '/compare', element: <ComparePage /> },
+       { path: '/analysis', element: <AnalysisPage /> },
+       { path: '/method', element: <MethodPage /> },
+       { path: '/about', element: <AboutPage /> },
+diff --git a/frontend/src/components/app-shell.tsx b/frontend/src/components/app-shell.tsx
+index 236469e..a3c8c91 100644
+--- a/frontend/src/components/app-shell.tsx
++++ b/frontend/src/components/app-shell.tsx
+@@ -1,93 +1,74 @@
+-import { CalendarDays, Download, FlaskConical, Info, Satellite, Share2, Waves } from 'lucide-react'
++import {
++  CalendarDays,
++  FlaskConical,
++  Globe2,
++  History,
++  Info,
++  LayoutDashboard,
++  Moon,
++  Sun,
++} from 'lucide-react'
+ import { useEffect, type ComponentType } from 'react'
+ import { NavLink, Outlet, useLocation } from 'react-router'
+ 
+ import head from '@/assets/mascot/head.png'
++import { Guide } from '@/components/guide/guide'
++import { useMode } from '@/hooks/use-mode'
+ import { cn } from '@/lib/utils'
+ 
+ interface NavItem {
+   to: string
+   label: string
+   icon: ComponentType<{ className?: string }>
+-  /** Section of the analysis page, matched against the URL hash. */
+-  section?: string
+ }
+ 
+-/** The rail of the wireframe: the globe, then the sections of the analysis. */
+ const NAV: NavItem[] = [
+-  { to: '/', label: 'Area', icon: Share2 },
+-  { to: '/analysis#calendar', label: 'Calendar', icon: CalendarDays, section: 'calendar' },
+-  { to: '/analysis#anomalies', label: 'Anomalies', icon: Waves, section: 'anomalies' },
+-  { to: '/analysis#sensors', label: 'Sensors', icon: Satellite, section: 'sensors' },
+-  { to: '/analysis#downloads', label: 'Downloads', icon: Download, section: 'downloads' },
++  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
++  { to: '/compare', label: 'Time machine', icon: History },
++  { to: '/analysis', label: 'Analysis', icon: CalendarDays },
++  { to: '/globe', label: 'Globe', icon: Globe2 },
+   { to: '/method', label: 'Method', icon: FlaskConical },
++  { to: '/about', label: 'About', icon: Info },
+ ]
+ 
+-function useActiveKey(): string {
+-  const { pathname, hash } = useLocation()
+-  if (pathname === '/analysis') return hash.slice(1) || 'calendar'
+-  if (pathname === '/method') return 'method'
+-  if (pathname === '/about') return 'about'
+-  return pathname === '/' ? 'area' : ''
+-}
+-
+-function keyOf(n: NavItem): string {
+-  return n.section ?? (n.to === '/' ? 'area' : n.to.slice(1))
+-}
+-
+-/** Keeps the search (area, period) when moving between views. */
+-function useSearch(): string {
+-  return useLocation().search
+-}
+-
+-function RailLink({
+-  item,
+-  active,
+-  search,
+-  compact,
+-}: {
+-  item: NavItem
+-  active: boolean
+-  search: string
+-  compact?: boolean
+-}) {
+-  const Icon = item.icon
+-  const [path, hash] = item.to.split('#')
++/** Night and day: the theme, and the satellite pass the 375 m layer shows. */
++function ModeSwitch() {
++  const [mode, setMode] = useMode()
+   return (
+-    <NavLink
+-      to={{ pathname: path, search, hash: hash ? `#${hash}` : '' }}
+-      aria-current={active ? 'page' : undefined}
+-      className={cn(
+-        'group flex flex-col items-center gap-1',
+-        compact ? 'min-w-0 flex-1 py-1.5' : 'w-full py-2',
+-      )}
++    <div
++      role="group"
++      aria-label="Day or night mode"
++      className="border-line flex shrink-0 rounded-full border p-0.5"
+     >
+-      <span
+-        className={cn(
+-          'grid place-items-center rounded-full transition-colors',
+-          compact ? 'h-7 w-11' : 'h-8 w-14',
+-          active ? 'bg-saffron-soft text-saffron' : 'text-soft group-hover:text-bone',
+-        )}
+-      >
+-        <Icon className="size-[18px]" />
+-      </span>
+-      <span
+-        className={cn(
+-          'text-[11px] leading-none',
+-          compact && 'text-[10px]',
+-          active ? 'text-bone font-semibold' : 'text-mute',
+-        )}
+-      >
+-        {item.label}
+-      </span>
+-    </NavLink>
++      {(
++        [
++          ['day', 'Day', Sun],
++          ['night', 'Night', Moon],
++        ] as const
++      ).map(([value, label, Icon]) => (
++        <button
++          key={value}
++          type="button"
++          aria-pressed={mode === value}
++          onClick={() => setMode(value)}
++          title={`${label} mode: ${value === 'day' ? 'light' : 'dark'} theme and ${value} passes on the 375 m layer`}
++          className={cn(
++            'flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold',
++            mode === value ? 'bg-saffron text-[#100d0f]' : 'text-soft hover:text-bone',
++          )}
++        >
++          <Icon className="size-4" />
++          <span className="hidden sm:inline">{label}</span>
++          <span className="sr-only sm:hidden">{label}</span>
++        </button>
++      ))}
++    </div>
+   )
+ }
+ 
+ export function AppShell() {
+-  const active = useActiveKey()
+-  const search = useSearch()
+-  const { pathname, hash } = useLocation()
++  // keeps the place and the period when moving between views
++  const { pathname, hash, search } = useLocation()
+ 
+   // links to a section scroll to it
+   useEffect(() => {
+@@ -100,7 +81,7 @@ export function AppShell() {
+   }, [pathname, hash])
+ 
+   return (
+-    <div className="min-h-svh md:pl-[88px]">
++    <div className="min-h-svh">
+       <a
+         href="#main"
+         className="sr-only rounded-md bg-saffron px-3 py-2 text-[#100d0f] focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1000]"
+@@ -108,49 +89,52 @@ export function AppShell() {
+         Skip to content
+       </a>
+ 
+-      <aside
+-        aria-label="Main"
+-        className="bg-rail border-line fixed inset-y-0 left-0 z-[600] hidden w-[88px] flex-col items-center border-r py-5 md:flex"
+-      >
+-        <NavLink
+-          to={{ pathname: '/', search }}
+-          className="mb-6 flex flex-col items-center gap-1"
+-          aria-label="Paparajote Lunar, home"
+-        >
+-          <span className="bg-card-2 grid size-12 place-items-center rounded-[14px]">
+-            <img src={head} alt="" className="size-10" />
+-          </span>
+-          <span className="text-[11px] font-semibold">Paparajote</span>
+-        </NavLink>
+-        <nav className="flex w-full flex-col items-center gap-2">
+-          {NAV.map((n) => (
+-            <RailLink key={n.label} item={n} active={active === keyOf(n)} search={search} />
+-          ))}
+-        </nav>
+-        <NavLink
+-          to={{ pathname: '/about', search }}
+-          className={cn(
+-            'mt-auto grid size-10 place-items-center rounded-full',
+-            active === 'about' ? 'bg-saffron-soft text-saffron' : 'text-soft hover:text-bone',
+-          )}
+-          aria-label="About"
+-        >
+-          <Info className="size-5" />
+-        </NavLink>
+-      </aside>
++      <header className="bg-rail border-line border-b">
++        <div className="mx-auto flex max-w-[1720px] items-center gap-3 px-3 py-2 sm:px-5">
++          <NavLink
++            to={{ pathname: '/', search }}
++            className="flex shrink-0 items-center gap-2.5"
++            aria-label="Fire Atlas by Paparajote Lunar, dashboard"
++          >
++            <span className="bg-card-2 grid size-10 place-items-center rounded-[12px]">
++              <img src={head} alt="" className="size-8" />
++            </span>
++            <span className="hidden leading-none sm:block">
++              <span className="block text-[15px] font-bold tracking-[0.08em]">FIRE ATLAS</span>
++              <span className="text-mute mt-1 block font-mono text-[10px] tracking-[0.06em] uppercase">
++                Paparajote Lunar
++              </span>
++            </span>
++          </NavLink>
++          <nav aria-label="Main" className="flex min-w-0 flex-1 gap-1 overflow-x-auto sm:ml-4">
++            {NAV.map(({ to, label, icon: Icon }) => (
++              <NavLink
++                key={to}
++                to={{ pathname: to, search }}
++                end={to === '/'}
++                className={({ isActive }) =>
++                  cn(
++                    'flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] whitespace-nowrap transition-colors',
++                    isActive
++                      ? 'bg-saffron-soft text-saffron font-semibold'
++                      : 'text-soft hover:text-bone',
++                  )
++                }
++              >
++                <Icon className="size-4" />
++                {label}
++              </NavLink>
++            ))}
++          </nav>
++          <ModeSwitch />
++        </div>
++      </header>
+ 
+-      <main id="main" className="pb-20 md:pb-0">
++      <main id="main" className="pb-20">
+         <Outlet />
+       </main>
+ 
+-      <nav
+-        aria-label="Main"
+-        className="bg-rail/95 border-line fixed inset-x-0 bottom-0 z-[600] flex border-t px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+-      >
+-        {NAV.map((n) => (
+-          <RailLink key={n.label} item={n} active={active === keyOf(n)} search={search} compact />
+-        ))}
+-      </nav>
++      <Guide />
+     </div>
+   )
+ }
+diff --git a/frontend/src/components/dashboard/controls.tsx b/frontend/src/components/dashboard/controls.tsx
+new file mode 100644
+index 0000000..5341fa3
+--- /dev/null
++++ b/frontend/src/components/dashboard/controls.tsx
+@@ -0,0 +1,287 @@
++import { Crosshair, Flame, Glasses, Grid3x3, ScanSearch, Waves } from 'lucide-react'
++import { useId, useState, type ReactNode } from 'react'
++
++import type { Resolution } from '@/api/firemap'
++import type { MapLayer } from '@/components/explore/area-map'
++import { BASEMAPS, FIRE_BANDS, hasImagery, type Basemap } from '@/lib/basemaps'
++import { cn } from '@/lib/utils'
++
++export function PanelSection({ title, children }: { title: string; children: ReactNode }) {
++  return (
++    <section className="border-line border-b py-4 first:pt-0 last:border-b-0 last:pb-0">
++      <h3 className="eyebrow mb-2.5">{title}</h3>
++      {children}
++    </section>
++  )
++}
++
++const LAYERS: { id: MapLayer; label: string; hint: string; icon: ReactNode }[] = [
++  {
++    id: 'fire',
++    label: 'Fire activity',
++    hint: 'Harmonized hotspots per cell',
++    icon: <Flame className="size-4" />,
++  },
++  {
++    id: 'anomalies',
++    label: 'Anomalies',
++    hint: 'This month against its history',
++    icon: <Waves className="size-4" />,
++  },
++  {
++    id: 'detections',
++    label: 'Detections, 375 m',
++    hint: 'Every satellite detection',
++    icon: <ScanSearch className="size-4" />,
++  },
++]
++
++export function LayerPicker({
++  value,
++  onChange,
++  detailAvailable,
++}: {
++  value: MapLayer
++  onChange: (l: MapLayer) => void
++  /** The detail layer needs a place smaller than the whole world. */
++  detailAvailable: boolean
++}) {
++  const name = useId()
++  return (
++    <fieldset className="space-y-1.5">
++      <legend className="sr-only">Map layer</legend>
++      {LAYERS.map((l) => {
++        const disabled = l.id === 'detections' && !detailAvailable
++        return (
++          <label
++            key={l.id}
++            className={cn(
++              'border-line has-[:checked]:border-saffron has-[:checked]:bg-saffron-soft flex cursor-pointer items-center gap-2.5 rounded-[10px] border px-3 py-2 has-[:focus-visible]:outline-2',
++              disabled && 'cursor-not-allowed opacity-40',
++            )}
++          >
++            <input
++              type="radio"
++              name={name}
++              className="sr-only"
++              checked={value === l.id}
++              disabled={disabled}
++              onChange={() => onChange(l.id)}
++            />
++            <span className="text-saffron">{l.icon}</span>
++            <span className="min-w-0">
++              <span className="block text-[13px] font-semibold">{l.label}</span>
++              <span className="text-mute block truncate text-[11px]">
++                {disabled ? 'Pick a place first' : l.hint}
++              </span>
++            </span>
++          </label>
++        )
++      })}
++    </fieldset>
++  )
++}
++
++const RESOLUTIONS: Resolution[] = [0.25, 0.5, 1, 2]
++
++export function ResolutionPicker({
++  value,
++  onChange,
++  min,
++}: {
++  value: Resolution
++  onChange: (r: Resolution) => void
++  /** The finest cell allowed for the area on screen. */
++  min: Resolution
++}) {
++  return (
++    <div className="flex items-center gap-2">
++      <Grid3x3 className="text-soft size-4 shrink-0" aria-hidden />
++      <div role="group" aria-label="Cell size" className="flex flex-1 gap-1">
++        {RESOLUTIONS.map((r) => (
++          <button
++            key={r}
++            type="button"
++            aria-pressed={r === value}
++            disabled={r < min}
++            onClick={() => onChange(r)}
++            className={cn(
++              'border-line h-8 flex-1 rounded-full border font-mono text-[12px] disabled:opacity-35',
++              r === value ? 'border-saffron bg-saffron-soft text-saffron' : 'hover:bg-white/5',
++            )}
++          >
++            {r}°
++          </button>
++        ))}
++      </div>
++    </div>
++  )
++}
++
++const inLat = (v: number) => Number.isFinite(v) && v >= -90 && v <= 90
++const inLon = (v: number) => Number.isFinite(v) && v >= -180 && v <= 180
++
++/** Type a latitude and longitude instead of tapping the map. */
++export function CoordsForm({
++  radiusKm,
++  onRadius,
++  onGo,
++}: {
++  radiusKm: number
++  onRadius: (km: number) => void
++  onGo: (lat: number, lon: number) => void
++}) {
++  const id = useId()
++  const [lat, setLat] = useState('')
++  const [lon, setLon] = useState('')
++  const la = Number(lat)
++  const lo = Number(lon)
++  const ok = lat !== '' && lon !== '' && inLat(la) && inLon(lo)
++  const field =
++    'bg-card-2 border-line w-full rounded-md border px-2 py-1.5 font-mono text-[12px] placeholder:text-mute'
++  return (
++    <form
++      className="space-y-2"
++      onSubmit={(e) => {
++        e.preventDefault()
++        if (ok) onGo(la, lo)
++      }}
++    >
++      <div className="grid grid-cols-2 gap-2">
++        <div>
++          <label htmlFor={`${id}-lat`} className="text-soft text-[11px]">
++            Latitude
++          </label>
++          <input
++            id={`${id}-lat`}
++            inputMode="decimal"
++            placeholder="37.99"
++            value={lat}
++            onChange={(e) => setLat(e.target.value)}
++            className={field}
++          />
++        </div>
++        <div>
++          <label htmlFor={`${id}-lon`} className="text-soft text-[11px]">
++            Longitude
++          </label>
++          <input
++            id={`${id}-lon`}
++            inputMode="decimal"
++            placeholder="-1.13"
++            value={lon}
++            onChange={(e) => setLon(e.target.value)}
++            className={field}
++          />
++        </div>
++      </div>
++      <div className="flex items-center gap-2">
++        <label htmlFor={`${id}-radius`} className="text-soft text-[11px]">
++          Radius
++        </label>
++        <select
++          id={`${id}-radius`}
++          value={radiusKm}
++          onChange={(e) => onRadius(Number(e.target.value))}
++          className="bg-card-2 border-line rounded-md border px-2 py-1.5 text-[12px]"
++        >
++          {[5, 10, 25, 50, 100].map((r) => (
++            <option key={r} value={r}>
++              {r} km
++            </option>
++          ))}
++        </select>
++        <button
++          type="submit"
++          disabled={!ok}
++          className="bg-saffron ml-auto flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-[#100d0f] disabled:opacity-40"
++        >
++          <Crosshair className="size-3.5" /> Go
++        </button>
++      </div>
++      {(lat !== '' || lon !== '') && !ok && (
++        <p className="text-garnet text-[11px]">
++          Latitude from −90 to 90, longitude from −180 to 180, in decimal degrees.
++        </p>
++      )}
++    </form>
++  )
++}
++
++/** "Spectral vision": look at the surface through each sensor. */
++export function SpectralPicker({
++  value,
++  onChange,
++  day,
++  onDay,
++  maxDay,
++}: {
++  value: Basemap
++  onChange: (b: Basemap) => void
++  day: string
++  onDay: (d: string) => void
++  maxDay?: string
++}) {
++  const id = useId()
++  const missing = value.layer !== null && !hasImagery(value, day)
++  return (
++    <div className="space-y-2">
++      <div className="flex items-center gap-2">
++        <Glasses className="text-saffron size-4 shrink-0" aria-hidden />
++        <label htmlFor={`${id}-map`} className="sr-only">
++          Satellite view
++        </label>
++        <select
++          id={`${id}-map`}
++          value={value.id}
++          onChange={(e) => onChange(BASEMAPS.find((b) => b.id === e.target.value) ?? BASEMAPS[0])}
++          className="bg-card-2 border-line min-w-0 flex-1 rounded-md border px-2 py-1.5 text-[12px]"
++        >
++          {BASEMAPS.map((b) => (
++            <option key={b.id} value={b.id}>
++              {b.sensor ? `${b.sensor}: ${b.label}` : b.label}
++            </option>
++          ))}
++        </select>
++      </div>
++      {value.layer && (
++        <div className="flex items-center gap-2">
++          <label htmlFor={`${id}-day`} className="text-soft text-[11px]">
++            Image of
++          </label>
++          <input
++            id={`${id}-day`}
++            type="date"
++            value={day}
++            min={value.since ?? undefined}
++            max={maxDay}
++            onChange={(e) => e.target.value && onDay(e.target.value)}
++            className="bg-card-2 border-line rounded-md border px-2 py-1 font-mono text-[12px]"
++          />
++        </div>
++      )}
++      <p className="text-soft text-[11px] leading-relaxed">{value.reads}</p>
++      {missing && (
++        <p className="text-garnet text-[11px]">
++          {value.sensor} imagery starts on {value.since}. Pick a later day or another sensor.
++        </p>
++      )}
++      <details className="text-[11px]">
++        <summary className="text-saffron cursor-pointer">How each sensor sees fire</summary>
++        <ul className="text-soft mt-1.5 space-y-1 leading-relaxed">
++          {FIRE_BANDS.map((b) => (
++            <li key={b.sensor}>
++              <strong className="text-bone">{b.sensor}</strong>, {b.pixel} pixels: {b.bands}.
++            </li>
++          ))}
++          <li>
++            Both compare a mid-infrared band, where flames shine, with a thermal band that gives the
++            background. Smaller pixels catch smaller fires, which is why the two counts need
++            harmonizing.
++          </li>
++          <li>These images show the surface; the detections come from the layers above.</li>
++        </ul>
++      </details>
++    </div>
++  )
++}
+diff --git a/frontend/src/components/dashboard/kpis.tsx b/frontend/src/components/dashboard/kpis.tsx
+new file mode 100644
+index 0000000..b594fdf
+--- /dev/null
++++ b/frontend/src/components/dashboard/kpis.tsx
+@@ -0,0 +1,90 @@
++import type { ReactNode } from 'react'
++
++import type { CalendarResponse, Coverage } from '@/api/types'
++import { BigNumber, Card } from '@/components/card'
++import { Skeleton } from '@/components/state'
++import { formatCount, formatMonth, formatSignedPct } from '@/lib/format'
++import { anomalyClass } from '@/lib/heat'
++import { statusMeta, TONE_COLOR } from '@/lib/status'
++
++function Tile({ label, value, sub }: { label: string; value: ReactNode; sub: ReactNode }) {
++  return (
++    <Card className="min-w-0 px-4 py-3">
++      <p className="eyebrow truncate">{label}</p>
++      <BigNumber className="mt-1 truncate text-[24px] leading-tight">{value}</BigNumber>
++      <p className="text-soft mt-0.5 truncate text-[12px]">{sub}</p>
++    </Card>
++  )
++}
++
++interface KpisProps {
++  data?: CalendarResponse
++  coverage?: Coverage
++  /** The month picked on the calendar, if any. */
++  month: string | null
++}
++
++/** The four numbers of the selection: hotspots, energy, anomaly, coverage. */
++export function Kpis({ data, coverage, month }: KpisProps) {
++  if (!data) {
++    return (
++      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
++        {[0, 1, 2, 3].map((i) => (
++          <Skeleton key={i} className="h-[86px]" />
++        ))}
++      </div>
++    )
++  }
++  const cal = data.calendar
++  const picked = month ? cal.months.find((m) => m.month === month) : undefined
++  const hotspots = picked ? picked.hotspots : cal.months.reduce((s, m) => s + m.hotspots, 0)
++  const frp = picked ? picked.frp_mw : cal.months.reduce((s, m) => s + m.frp_mw, 0)
++  const period = picked ? formatMonth(picked.month) : `${cal.from} to ${cal.to}`
++  const status = picked ? anomalyClass(picked.percentile) : (cal.current?.status ?? 'no_history')
++  const pct = picked ? picked.anomaly_pct : (cal.current?.anomaly_pct ?? null)
++  const anomalyMonth = picked?.month ?? cal.current?.month
++  const meta = statusMeta(status)
++  const estimated = picked?.estimated
++  return (
++    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
++      <Tile
++        label="Harmonized hotspots"
++        value={formatCount(hotspots)}
++        sub={`${period}${estimated ? ' · estimated from MODIS' : ''}`}
++      />
++      <Tile
++        label="Radiative power (FRP)"
++        value={`${formatCount(frp)} MW`}
++        sub="summed over the detections"
++      />
++      <Tile
++        label="Anomaly"
++        value={
++          <span className="flex items-center gap-2">
++            <span
++              aria-hidden
++              className="size-2.5 shrink-0 rounded-full"
++              style={{ background: TONE_COLOR[meta.tone] }}
++            />
++            {pct !== null ? formatSignedPct(pct) : 'n/a'}
++          </span>
++        }
++        sub={
++          anomalyMonth
++            ? `${meta.label}, ${formatMonth(anomalyMonth, 'short')} vs its usual`
++            : meta.label
++        }
++      />
++      <Tile
++        label="Data coverage"
++        value={`${formatCount(data.area.cells)} cells`}
++        sub={
++          <>
++            0.25° grid · up to {cal.data_until}
++            {coverage && ` · ${coverage.regions.harmonized}/${coverage.regions.total} countries`}
++          </>
++        }
++      />
++    </div>
++  )
++}
+diff --git a/frontend/src/components/dashboard/mini-calendar.test.tsx b/frontend/src/components/dashboard/mini-calendar.test.tsx
+new file mode 100644
+index 0000000..fcd576a
+--- /dev/null
++++ b/frontend/src/components/dashboard/mini-calendar.test.tsx
+@@ -0,0 +1,30 @@
++import { render, screen } from '@testing-library/react'
++import userEvent from '@testing-library/user-event'
++import { describe, expect, it, vi } from 'vitest'
++
++import { calendarFixture } from '@/test/fixtures'
++
++import { MiniCalendar } from './mini-calendar'
++
++describe('MiniCalendar', () => {
++  it('picks a month for the map and lets go of it again', async () => {
++    const onSelect = vi.fn()
++    const { rerender } = render(
++      <MiniCalendar calendar={calendarFixture()} selected={null} onSelect={onSelect} />,
++    )
++    const aug = screen.getByRole('button', { name: /August 2011: 101 hotspots/ })
++    await userEvent.click(aug)
++    expect(onSelect).toHaveBeenCalledWith('2011-08')
++
++    rerender(<MiniCalendar calendar={calendarFixture()} selected="2011-08" onSelect={onSelect} />)
++    const pressed = screen.getByRole('button', { name: /August 2011/ })
++    expect(pressed).toHaveAttribute('aria-pressed', 'true')
++    await userEvent.click(pressed)
++    expect(onSelect).toHaveBeenLastCalledWith(null)
++  })
++
++  it('has no button for months outside the record', () => {
++    render(<MiniCalendar calendar={calendarFixture()} selected={null} onSelect={() => {}} />)
++    expect(screen.queryByRole('button', { name: /December 2013/ })).toBeNull()
++  })
++})
+diff --git a/frontend/src/components/dashboard/mini-calendar.tsx b/frontend/src/components/dashboard/mini-calendar.tsx
+new file mode 100644
+index 0000000..8cfbc6f
+--- /dev/null
++++ b/frontend/src/components/dashboard/mini-calendar.tsx
+@@ -0,0 +1,75 @@
++import type { Calendar } from '@/api/types'
++import { formatCount, formatMonth, monthName } from '@/lib/format'
++import { heatColor } from '@/lib/heat'
++import { cn } from '@/lib/utils'
++
++interface MiniCalendarProps {
++  calendar: Calendar
++  /** The month shown on the map ("YYYY-MM"), if one is picked. */
++  selected: string | null
++  onSelect: (month: string | null) => void
++}
++
++/** The burning calendar, compact: every month is a button that drives the map. */
++export function MiniCalendar({ calendar, selected, onSelect }: MiniCalendarProps) {
++  const n = calendar.scale.colors.length - 1
++  const { years, values, classes } = calendar.grid
++  const top = calendar.scale.breaks.at(-1)
++  return (
++    <div>
++      <div className="grid grid-cols-[2.2rem_1fr] items-center gap-1.5" aria-hidden>
++        <span />
++        <div className="grid grid-cols-12 gap-[2px]">
++          {Array.from({ length: 12 }, (_, i) => (
++            <span key={i} className="text-mute text-center font-mono text-[9px]">
++              {monthName(i + 1, 'narrow')}
++            </span>
++          ))}
++        </div>
++      </div>
++      <div className="mt-1 space-y-[2px]" role="group" aria-label="Burning calendar">
++        {years.map((y, r) => (
++          <div key={y} className="grid grid-cols-[2.2rem_1fr] items-center gap-1.5">
++            <span className="text-mute font-mono text-[10px] leading-none">{y}</span>
++            <div className="grid grid-cols-12 gap-[2px]">
++              {classes[r].map((c, i) => {
++                const month = `${y}-${String(i + 1).padStart(2, '0')}`
++                const v = values[r][i]
++                if (c < 0 || v === null) return <span key={i} className="h-3.5" />
++                const on = month === selected
++                return (
++                  <button
++                    key={i}
++                    type="button"
++                    aria-pressed={on}
++                    aria-label={`${formatMonth(month)}: ${formatCount(v)} hotspots. Show on the map`}
++                    title={`${formatMonth(month, 'short')}: ${formatCount(v)}`}
++                    onClick={() => onSelect(on ? null : month)}
++                    className={cn(
++                      'h-3.5 rounded-[2px]',
++                      on && 'outline-bone outline-2 outline-offset-1',
++                    )}
++                    style={{ background: heatColor(c, n) }}
++                  />
++                )
++              })}
++            </div>
++          </div>
++        ))}
++      </div>
++      <div className="mt-3 flex items-center gap-1 text-[10px]">
++        <span className="text-mute font-mono">0</span>
++        {Array.from({ length: n + 1 }, (_, c) => (
++          <span
++            key={c}
++            aria-hidden
++            className="h-2 flex-1 rounded-[2px]"
++            style={{ background: heatColor(c, n) }}
++          />
++        ))}
++        <span className="text-mute font-mono">{top ? `${formatCount(top)}+` : 'most'}</span>
++      </div>
++      <p className="text-mute mt-1.5 text-[11px]">Hotspots per month. Tap a month to map it.</p>
++    </div>
++  )
++}
+diff --git a/frontend/src/components/explore/area-map.tsx b/frontend/src/components/explore/area-map.tsx
+index 25996a8..d5460e5 100644
+--- a/frontend/src/components/explore/area-map.tsx
++++ b/frontend/src/components/explore/area-map.tsx
+@@ -1,5 +1,5 @@
+ import L from 'leaflet'
+-import { useEffect, useMemo } from 'react'
++import { useEffect, useMemo, useRef, useState } from 'react'
+ import {
+   Circle,
+   CircleMarker,
+@@ -14,23 +14,50 @@ import {
+ } from 'react-leaflet'
+ 
+ import type { AnomalyCell, MapResponse } from '@/api/types'
++import { useMode } from '@/hooks/use-mode'
+ import { areaBounds, type Area, type Bounds } from '@/lib/area'
+-import type { DrawingAction, DrawingState } from '@/lib/drawing'
++import { gibsUrl, hasImagery, type Basemap } from '@/lib/basemaps'
++import { footprint, frpColor, type Detection } from '@/lib/detections'
++import { initialDrawing, type DrawingAction, type DrawingState } from '@/lib/drawing'
+ import { formatCount, formatSignedPct } from '@/lib/format'
++import { heatFor } from '@/lib/heat'
+ import { TONE_COLOR, statusMeta } from '@/lib/status'
+ 
+-export type MapLayer = 'fire' | 'anomalies' | 'none'
++export type MapLayer = 'fire' | 'anomalies' | 'detections' | 'none'
++
++/** Where a map is looking, to keep two maps in step. */
++export interface MapView {
++  lat: number
++  lon: number
++  zoom: number
++}
++
++/** From this zoom on, a 375 m pixel is big enough to draw as its footprint. */
++export const FOOTPRINT_ZOOM = 11
+ 
+ interface AreaMapProps {
+   area: Area
+-  drawing: DrawingState
+-  dispatch: (a: DrawingAction) => void
++  drawing?: DrawingState
++  dispatch?: (a: DrawingAction) => void
+   layer: MapLayer
+   fire?: MapResponse
+   anomalies?: AnomalyCell[]
++  /** Individual detections, for the `detections` layer. */
++  detections?: Detection[]
++  /** Hotspots of the brightest cell; pass the same to two maps to compare them. */
++  scaleMax?: number
++  /** Satellite imagery under the data, and its day (YYYY-MM-DD). */
++  basemap?: Basemap
++  imageryDay?: string
++  /** A tap on the map while no drawing tool is active. */
++  onPick?: (lat: number, lon: number) => void
++  view?: MapView
++  onView?: (v: MapView) => void
+   className?: string
+ }
+ 
++const noop = () => {}
++
+ // Esri Canvas basemaps: muted, so the fire stands out, and usable without a key.
+ const TILES = {
+   dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+@@ -57,21 +84,103 @@ function FitArea({ area }: { area: Area }) {
+ function Taps({
+   drawing,
+   dispatch,
++  onPick,
+ }: {
+   drawing: DrawingState
+   dispatch: (a: DrawingAction) => void
++  onPick?: (lat: number, lon: number) => void
+ }) {
+   const map = useMapEvents({
+     click(e) {
+-      dispatch({ type: 'tap', lat: e.latlng.lat, lon: e.latlng.lng })
++      // Leaflet repeats the world sideways: bring the longitude back to ±180
++      const { lat, lng } = e.latlng.wrap()
++      if (drawing.tool) dispatch({ type: 'tap', lat, lon: lng })
++      else onPick?.(lat, lng)
++    },
++  })
++  useEffect(() => {
++    map.getContainer().style.cursor = drawing.tool || onPick ? 'crosshair' : ''
++  }, [map, drawing.tool, onPick])
++  return null
++}
++
++/** Reports the view and follows the one it is given, so two maps move together. */
++function SyncView({ view, onView }: { view?: MapView; onView?: (v: MapView) => void }) {
++  // moves this component makes itself are not reported back, or two maps would chase each other
++  const applying = useRef(false)
++  const map = useMapEvents({
++    moveend() {
++      if (applying.current) return
++      const c = map.getCenter()
++      onView?.({ lat: c.lat, lon: c.lng, zoom: map.getZoom() })
+     },
+   })
+   useEffect(() => {
+-    map.getContainer().style.cursor = drawing.tool ? 'crosshair' : ''
+-  }, [map, drawing.tool])
++    if (!view) return
++    const c = map.getCenter()
++    const same =
++      Math.abs(c.lat - view.lat) < 1e-6 &&
++      Math.abs(c.lng - view.lon) < 1e-6 &&
++      map.getZoom() === view.zoom
++    if (same) return
++    applying.current = true
++    map.setView([view.lat, view.lon], view.zoom, { animate: false })
++    applying.current = false
++  }, [map, view])
+   return null
+ }
+ 
++function useZoom(): number {
++  const map = useMap()
++  const [zoom, setZoom] = useState(() => map.getZoom())
++  useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
++  return zoom
++}
++
++/** Each detection: a dot from afar, the ground its pixel covers from close. */
++function Detections({ items, css }: { items: Detection[]; css: (v: string) => string }) {
++  const zoom = useZoom()
++  const renderer = useMemo(() => L.canvas({ padding: 0.3 }), [])
++  return items.map((d, i) => {
++    const color = css(frpColor(d.frp))
++    const tip = (
++      <Tooltip>
++        {d.date} {d.time.slice(0, 2)}:{d.time.slice(2)} UTC · {d.satellite} ·{' '}
++        {d.pass === 'D' ? 'day pass' : d.pass === 'N' ? 'night pass' : 'pass unknown'}
++        <br />
++        {d.frp !== null ? `${formatCount(d.frp)} MW` : 'no FRP'} · confidence {d.confidence}
++        {d.scanKm !== null && d.trackKm !== null && (
++          <>
++            {' '}
++            · pixel {Math.round(d.scanKm * 1000)} × {Math.round(d.trackKm * 1000)} m
++          </>
++        )}
++        {d.provisional && ' · provisional'}
++      </Tooltip>
++    )
++    return zoom >= FOOTPRINT_ZOOM ? (
++      <Rectangle
++        key={i}
++        bounds={footprint(d)}
++        renderer={renderer}
++        pathOptions={{ color, weight: 1, fillColor: color, fillOpacity: 0.55 }}
++      >
++        {tip}
++      </Rectangle>
++    ) : (
++      <CircleMarker
++        key={i}
++        center={[d.lat, d.lon]}
++        radius={3}
++        renderer={renderer}
++        pathOptions={{ stroke: false, fillColor: color, fillOpacity: 0.9 }}
++      >
++        {tip}
++      </CircleMarker>
++    )
++  })
++}
++
+ function AreaShape({ area }: { area: Area }) {
+   switch (area.kind) {
+     case 'bbox':
+@@ -104,26 +213,31 @@ function AreaShape({ area }: { area: Area }) {
+   }
+ }
+ 
+-function heatFor(v: number, max: number): string {
+-  const step = Math.min(7, Math.max(1, Math.ceil((Math.sqrt(v / max) || 0) * 7)))
+-  return `var(--heat-${step})`
+-}
+-
+ /** The map: the chosen area, the drawing in progress and a fire layer. */
+ export function AreaMap({
+   area,
+-  drawing,
+-  dispatch,
++  drawing = initialDrawing,
++  dispatch = noop,
+   layer,
+   fire,
+   anomalies,
++  detections,
++  scaleMax,
++  basemap,
++  imageryDay,
++  onPick,
++  view,
++  onView,
+   className,
+ }: AreaMapProps) {
+   const renderer = useMemo(() => L.canvas({ padding: 0.3 }), [])
++  const [mode] = useMode()
+   // CSS variables do not reach the canvas: resolve them.
+   const style = getComputedStyle(document.documentElement)
+   const css = (v: string) =>
+     v.startsWith('var(') ? style.getPropertyValue(v.slice(4, -1)).trim() || '#f0933a' : v
++  const imagery = basemap && imageryDay && hasImagery(basemap, imageryDay) ? basemap : null
++  const max = Math.max(scaleMax ?? fire?.max_hotspots ?? 1, 1)
+ 
+   return (
+     <MapContainer
+@@ -135,20 +249,36 @@ export function AreaMap({
+       attributionControl
+       preferCanvas
+     >
+-      <TileLayer url={TILES.dark} attribution={TILE_ATTRIBUTION} maxZoom={16} />
+-      <FitArea area={area} />
+-      <Taps drawing={drawing} dispatch={dispatch} />
++      {/* the key makes Leaflet swap the tiles when the mode changes */}
++      <TileLayer
++        key={mode}
++        url={mode === 'day' ? TILES.light : TILES.dark}
++        attribution={TILE_ATTRIBUTION}
++        maxZoom={16}
++      />
++      {imagery && (
++        <TileLayer
++          key={`${imagery.id}-${imageryDay}`}
++          url={gibsUrl(imagery, imageryDay!)}
++          attribution="Imagery: NASA GIBS / ESDIS"
++          maxNativeZoom={imagery.level}
++          maxZoom={16}
++        />
++      )}
++      {!view && <FitArea area={area} />}
++      <Taps drawing={drawing} dispatch={dispatch} onPick={onPick} />
++      {(view || onView) && <SyncView view={view} onView={onView} />}
+ 
+       {layer === 'fire' &&
+         fire?.cells.map(([lat, lon, h]) => (
+           <CircleMarker
+             key={`${lat},${lon}`}
+             center={[lat, lon]}
+-            radius={2 + 7 * Math.sqrt(h / Math.max(fire.max_hotspots, 1))}
++            radius={2 + 7 * Math.min(1, Math.sqrt(h / max))}
+             renderer={renderer}
+             pathOptions={{
+               stroke: false,
+-              fillColor: css(heatFor(h, fire.max_hotspots)),
++              fillColor: css(heatFor(h, max)),
+               fillOpacity: 0.85,
+             }}
+             interactive={false}
+@@ -176,6 +306,8 @@ export function AreaMap({
+             </CircleMarker>
+           ))}
+ 
++      {layer === 'detections' && detections && <Detections items={detections} css={css} />}
++
+       {!drawing.tool && <AreaShape area={area} />}
+       {drawing.points.length > 0 && (
+         <>
+diff --git a/frontend/src/components/export-panel.tsx b/frontend/src/components/export-panel.tsx
+new file mode 100644
+index 0000000..383a8ce
+--- /dev/null
++++ b/frontend/src/components/export-panel.tsx
+@@ -0,0 +1,155 @@
++import { CalendarDays, Download, FileSpreadsheet } from 'lucide-react'
++import { useId, useState } from 'react'
++
++import { calendarCsvUrl } from '@/api/calendar'
++import { hotspotsCsvUrl } from '@/api/hotspots'
++import type { Area } from '@/lib/area'
++import type { Country } from '@/lib/country'
++import { monthSpanDays, TODAY } from '@/lib/export'
++import { cn } from '@/lib/utils'
++
++const FIRST_MONTH = '2002-07'
++const MAX_DAYS = 366
++
++interface ExportPanelProps {
++  /** The place on screen: the chosen point, shape or region. */
++  area: Area
++  name: string
++  /** The country under the place, to offer the whole of it. */
++  country?: Country | null
++  /** Last day with data (YYYY-MM-DD). */
++  dataUntil?: string
++  from?: string
++  to?: string
++  className?: string
++}
++
++type Scope = 'place' | 'country'
++
++/** Download the record of the chosen place, or of its whole country, between two months. */
++export function ExportPanel({
++  area,
++  name,
++  country,
++  dataUntil,
++  from: initialFrom,
++  to: initialTo,
++  className,
++}: ExportPanelProps) {
++  const id = useId()
++  const lastMonth = (dataUntil ?? TODAY).slice(0, 7)
++  const [scope, setScope] = useState<Scope>('place')
++  const [from, setFrom] = useState(initialFrom ?? FIRST_MONTH)
++  const [to, setTo] = useState(initialTo ?? lastMonth)
++  const canCountry = !!country?.outline
++  const target = scope === 'country' && country?.outline ? country.outline : area
++  const valid = from >= FIRST_MONTH && from <= to
++  const days = valid ? monthSpanDays(from, to, dataUntil) : null
++  const field = 'bg-card-2 border-line rounded-md border px-2 py-1 font-mono text-[12px]'
++
++  return (
++    <div className={cn('space-y-3 text-[13px]', className)}>
++      <fieldset>
++        <legend className="text-soft mb-1.5 text-[12px]">What to download</legend>
++        <div className="flex flex-wrap gap-2">
++          {(
++            [
++              ['place', name],
++              ['country', country ? `All of ${country.name}` : 'Whole country'],
++            ] as const
++          ).map(([value, label]) => (
++            <label
++              key={value}
++              className={cn(
++                'border-line has-[:checked]:border-saffron has-[:checked]:bg-saffron-soft has-[:checked]:text-saffron max-w-full cursor-pointer truncate rounded-full border px-3 py-1.5 has-[:focus-visible]:outline-2',
++                value === 'country' && !canCountry && 'cursor-not-allowed opacity-40',
++              )}
++            >
++              <input
++                type="radio"
++                name={`${id}-scope`}
++                className="sr-only"
++                checked={scope === value}
++                disabled={value === 'country' && !canCountry}
++                onChange={() => setScope(value)}
++              />
++              {label}
++            </label>
++          ))}
++        </div>
++        {!canCountry && (
++          <p className="text-mute mt-1.5 text-[11px]">
++            Tap a point on land to get its whole country too.
++          </p>
++        )}
++        {scope === 'country' && (
++          <p className="text-mute mt-1.5 text-[11px]">
++            The landmass under your point, inside its real borders (simplified outline).
++          </p>
++        )}
++      </fieldset>
++
++      <div className="flex flex-wrap items-center gap-2">
++        <label htmlFor={`${id}-from`} className="text-soft text-[12px]">
++          From
++        </label>
++        <input
++          id={`${id}-from`}
++          type="month"
++          value={from}
++          min={FIRST_MONTH}
++          max={to}
++          onChange={(e) => setFrom(e.target.value)}
++          className={field}
++        />
++        <label htmlFor={`${id}-to`} className="text-soft text-[12px]">
++          to
++        </label>
++        <input
++          id={`${id}-to`}
++          type="month"
++          value={to}
++          min={from}
++          max={lastMonth}
++          onChange={(e) => setTo(e.target.value)}
++          className={field}
++        />
++      </div>
++
++      {!valid ? (
++        <p className="text-garnet text-[12px]">
++          Pick a start month from July 2002, before the end.
++        </p>
++      ) : (
++        <div className="flex flex-col gap-2">
++          <a
++            href={calendarCsvUrl(target, { from, to })}
++            download
++            className="bg-saffron flex h-10 items-center justify-center gap-2 rounded-full px-4 font-semibold text-[#100d0f]"
++          >
++            <CalendarDays className="size-4" /> Monthly calendar (CSV)
++          </a>
++          {days && days.days <= MAX_DAYS ? (
++            <a
++              href={hotspotsCsvUrl(target, days.from, days.to)}
++              download
++              className="border-line flex h-10 items-center justify-center gap-2 rounded-full border px-4 font-semibold hover:bg-white/5"
++            >
++              <FileSpreadsheet className="size-4" /> Every detection (CSV)
++            </a>
++          ) : (
++            <p className="text-mute flex items-center gap-2 text-[11px]">
++              <Download className="size-3.5 shrink-0" /> Individual detections come in files of up
++              to 12 months: shorten the period to download them.
++            </p>
++          )}
++        </div>
++      )}
++      <p className="text-mute text-[11px] leading-relaxed">
++        The calendar has harmonized hotspots, radiative power, the usual value and the anomaly of
++        each month. Detections are the raw NASA FIRMS points with date, time, satellite, power and
++        day or night.
++      </p>
++    </div>
++  )
++}
+diff --git a/frontend/src/components/globe/globe.tsx b/frontend/src/components/globe/globe.tsx
+index e15d52f..2d384d7 100644
+--- a/frontend/src/components/globe/globe.tsx
++++ b/frontend/src/components/globe/globe.tsx
+@@ -1,11 +1,20 @@
+ import { geoGraticule10, geoPath } from 'd3-geo'
+-import { Flame } from 'lucide-react'
++import { Flame, Minus, Plus, RotateCcw } from 'lucide-react'
+ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+ import { feature } from 'topojson-client'
+ import type { GeometryCollection, Topology } from 'topojson-specification'
+ import land110 from 'world-atlas/land-110m.json'
+ 
+-import { makeProjection, pointAt, visible, type Rotation } from '@/lib/globe'
++import {
++  clampZoom,
++  FIRE_COLORS,
++  makeProjection,
++  MAX_ZOOM,
++  MIN_ZOOM,
++  pointAt,
++  visible,
++  type Rotation,
++} from '@/lib/globe'
+ import { cn } from '@/lib/utils'
+ 
+ const LAND = feature(
+@@ -33,8 +42,6 @@ interface GlobeProps {
+   className?: string
+ }
+ 
+-const FIRE_COLORS = ['#6e2536', '#c23b54', '#e0623f', '#ee8f5a']
+-
+ /** A speckled bone texture for land, like the wireframe's. */
+ function landPattern(ctx: CanvasRenderingContext2D): CanvasPattern | string {
+   const c = document.createElement('canvas')
+@@ -60,7 +67,12 @@ export function Globe({ fire, maxFire, pins, marker, onPick, children, className
+   const canvas = useRef<HTMLCanvasElement>(null)
+   const [size, setSize] = useState(480)
+   const [rotate, setRotate] = useState<Rotation>([-10, -25])
++  const [zoom, setZoom] = useState(1)
+   const drag = useRef<{ x: number; y: number; r: Rotation; moved: boolean } | null>(null)
++  const box = useRef<HTMLDivElement>(null)
++  // fingers on the globe, to pinch
++  const pointers = useRef(new Map<number, { x: number; y: number }>())
++  const pinch = useRef<{ dist: number; zoom: number } | null>(null)
+   const spinning = useRef(!marker)
+ 
+   useEffect(() => {
+@@ -91,7 +103,20 @@ export function Globe({ fire, maxFire, pins, marker, onPick, children, className
+     return () => cancelAnimationFrame(raf)
+   }, [])
+ 
+-  const projection = useMemo(() => makeProjection(size, rotate), [size, rotate])
++  // the wheel zooms; a native listener, because React's is passive and cannot stop the page scroll
++  useEffect(() => {
++    const el = box.current
++    if (!el) return
++    const onWheel = (e: WheelEvent) => {
++      e.preventDefault()
++      spinning.current = false
++      setZoom((z) => clampZoom(z * Math.exp(-e.deltaY * 0.0015)))
++    }
++    el.addEventListener('wheel', onWheel, { passive: false })
++    return () => el.removeEventListener('wheel', onWheel)
++  }, [])
++
++  const projection = useMemo(() => makeProjection(size, rotate, zoom), [size, rotate, zoom])
+   const pattern = useRef<CanvasPattern | string | null>(null)
+ 
+   useEffect(() => {
+@@ -130,14 +155,15 @@ export function Globe({ fire, maxFire, pins, marker, onPick, children, className
+     // fire: only where it matters, bigger and hotter where there is more
+     for (const [lat, lon, h] of fire) {
+       const k = Math.sqrt(h / Math.max(maxFire, 1))
+-      if (k < 0.06 || !visible([lon, lat], rotate)) continue
++      // closer in, smaller fires show too
++      if (k < 0.06 / zoom || !visible([lon, lat], rotate)) continue
+       const xy = projection([lon, lat])
+       if (!xy) continue
+       ctx.fillStyle =
+         FIRE_COLORS[Math.min(FIRE_COLORS.length - 1, Math.floor(k * FIRE_COLORS.length))]
+       ctx.globalAlpha = 0.55 + 0.4 * k
+       ctx.beginPath()
+-      ctx.arc(xy[0], xy[1], 1.4 + 4 * k, 0, Math.PI * 2)
++      ctx.arc(xy[0], xy[1], (1.4 + 4 * k) * Math.sqrt(zoom), 0, Math.PI * 2)
+       ctx.fill()
+     }
+     ctx.globalAlpha = 1
+@@ -150,12 +176,19 @@ export function Globe({ fire, maxFire, pins, marker, onPick, children, className
+     path({ type: 'Sphere' })
+     ctx.fillStyle = edge
+     ctx.fill()
+-  }, [projection, fire, maxFire, rotate, size])
++  }, [projection, fire, maxFire, rotate, size, zoom])
+ 
+   const place = (lat: number, lon: number) => {
+     if (!visible([lon, lat], rotate)) return null
+     const xy = projection([lon, lat])
+-    return xy ? { left: xy[0], top: xy[1] } : null
++    // zoomed in, part of the globe is outside the frame
++    if (!xy || xy[0] < 0 || xy[0] > size || xy[1] < 0 || xy[1] > size) return null
++    return { left: xy[0], top: xy[1] }
++  }
++
++  const zoomBy = (f: number) => {
++    spinning.current = false
++    setZoom((z) => clampZoom(z * f))
+   }
+ 
+   const markerPos = marker ? place(marker.lat, marker.lon) : null
+@@ -163,32 +196,64 @@ export function Globe({ fire, maxFire, pins, marker, onPick, children, className
+   return (
+     <div ref={wrap} className={cn('relative grid place-items-center', className)}>
+       <div
+-        className="relative touch-none select-none"
++        ref={box}
++        className={cn(
++          'relative touch-none select-none',
++          zoom > 1 && 'overflow-hidden rounded-[28px]',
++        )}
+         style={{ width: size, height: size }}
+         onPointerDown={(e) => {
+           spinning.current = false
+-          drag.current = { x: e.clientX, y: e.clientY, r: rotate, moved: false }
++          pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+           ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
++          if (pointers.current.size === 2) {
++            const [a, b] = [...pointers.current.values()]
++            pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, zoom }
++            drag.current = null
++            return
++          }
++          drag.current = { x: e.clientX, y: e.clientY, r: rotate, moved: false }
+         }}
+         onPointerMove={(e) => {
++          if (pointers.current.has(e.pointerId)) {
++            pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
++          }
++          if (pinch.current && pointers.current.size === 2) {
++            const [a, b] = [...pointers.current.values()]
++            const start = pinch.current
++            setZoom(clampZoom((start.zoom * Math.hypot(a.x - b.x, a.y - b.y)) / start.dist))
++            return
++          }
+           const d = drag.current
+           if (!d) return
+           const dx = e.clientX - d.x
+           const dy = e.clientY - d.y
+           if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true
+-          const k = 120 / size
++          const k = 120 / size / zoom
+           setRotate([d.r[0] + dx * k, Math.max(-70, Math.min(70, d.r[1] - dy * k))])
+         }}
+         onPointerUp={(e) => {
++          pointers.current.delete(e.pointerId)
++          if (pinch.current) {
++            // lifting a finger after a pinch is not a tap
++            if (pointers.current.size === 0) pinch.current = null
++            drag.current = null
++            return
++          }
+           const d = drag.current
+           drag.current = null
+           if (d && !d.moved) {
+-            const box = e.currentTarget.getBoundingClientRect()
+-            const ll = pointAt(projection, [e.clientX - box.left, e.clientY - box.top])
++            const rect = e.currentTarget.getBoundingClientRect()
++            const ll = pointAt(projection, [e.clientX - rect.left, e.clientY - rect.top])
+             if (ll) onPick(ll[1], ll[0])
+           }
+         }}
+-        aria-label="Globe with this month's fire. Drag to turn it; tap a place to see its record."
++        onPointerCancel={(e) => {
++          pointers.current.delete(e.pointerId)
++          if (pointers.current.size === 0) pinch.current = null
++          drag.current = null
++        }}
++        aria-label="Globe with this month's fire. Drag to turn it, scroll or pinch to zoom, tap a place to see its record."
+         role="application"
+       >
+         <div
+@@ -220,7 +285,7 @@ export function Globe({ fire, maxFire, pins, marker, onPick, children, className
+             >
+               <span className="ring-ping" style={{ top: 'calc(100% + 6px)' }} />
+               <span
+-                className="relative grid size-11 place-items-center rounded-[14px] border-2 border-[#100d0f]"
++                className="relative grid size-9 place-items-center rounded-[12px] border-2 border-[#100d0f]"
+                 style={{ background: p.color }}
+               >
+                 <Flame className="size-5 text-[#100d0f]" fill="currentColor" />
+@@ -241,6 +306,39 @@ export function Globe({ fire, maxFire, pins, marker, onPick, children, className
+         )}
+         {children}
+       </div>
++      <div
++        role="group"
++        aria-label="Zoom"
++        className="bg-card border-line absolute right-2 bottom-2 flex flex-col overflow-hidden rounded-[12px] border"
++      >
++        <button
++          type="button"
++          onClick={() => zoomBy(1.6)}
++          disabled={zoom >= MAX_ZOOM}
++          aria-label="Zoom in"
++          className="grid size-10 place-items-center hover:bg-white/5 disabled:opacity-40"
++        >
++          <Plus className="size-5" />
++        </button>
++        <button
++          type="button"
++          onClick={() => zoomBy(1 / 1.6)}
++          disabled={zoom <= MIN_ZOOM}
++          aria-label="Zoom out"
++          className="border-line grid size-10 place-items-center border-t hover:bg-white/5 disabled:opacity-40"
++        >
++          <Minus className="size-5" />
++        </button>
++        <button
++          type="button"
++          onClick={() => setZoom(1)}
++          disabled={zoom === 1}
++          aria-label="Reset zoom"
++          className="border-line grid size-10 place-items-center border-t hover:bg-white/5 disabled:opacity-40"
++        >
++          <RotateCcw className="size-4" />
++        </button>
++      </div>
+     </div>
+   )
+ }
+diff --git a/frontend/src/components/guide/guide.test.tsx b/frontend/src/components/guide/guide.test.tsx
+new file mode 100644
+index 0000000..3121b7f
+--- /dev/null
++++ b/frontend/src/components/guide/guide.test.tsx
+@@ -0,0 +1,42 @@
++import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
++import { render, screen } from '@testing-library/react'
++import userEvent from '@testing-library/user-event'
++import { MemoryRouter } from 'react-router'
++import { afterEach, describe, expect, it, vi } from 'vitest'
++
++import { calendarResponseFixture, sensorsFixture } from '@/test/fixtures'
++
++import { Guide } from './guide'
++
++function mount() {
++  vi.stubGlobal(
++    'fetch',
++    vi.fn((url: string) =>
++      Promise.resolve(
++        new Response(
++          JSON.stringify(url.includes('/sensors') ? sensorsFixture() : calendarResponseFixture()),
++          { status: 200, headers: { 'Content-Type': 'application/json' } },
++        ),
++      ),
++    ),
++  )
++  render(
++    <QueryClientProvider client={new QueryClient()}>
++      <MemoryRouter initialEntries={['/?area=world&name=Murcia']}>
++        <Guide />
++      </MemoryRouter>
++    </QueryClientProvider>,
++  )
++}
++
++describe('Guide', () => {
++  afterEach(() => vi.unstubAllGlobals())
++
++  it('opens, answers from the data and says it is not generative', async () => {
++    mount()
++    await userEvent.click(screen.getByRole('button', { name: /ask paparajote/i }))
++    expect(screen.getByText(/No generative AI/)).toBeInTheDocument()
++    await userEvent.click(screen.getByRole('button', { name: 'When does it burn here?' }))
++    expect(await screen.findByText(/In Murcia the usual peak is August/)).toBeInTheDocument()
++  })
++})
+diff --git a/frontend/src/components/guide/guide.tsx b/frontend/src/components/guide/guide.tsx
+new file mode 100644
+index 0000000..a0e1be9
+--- /dev/null
++++ b/frontend/src/components/guide/guide.tsx
+@@ -0,0 +1,124 @@
++import { MessageCircle, X } from 'lucide-react'
++import { useEffect, useId, useState } from 'react'
++
++import head from '@/assets/mascot/head.png'
++import { Mascot } from '@/components/mascot'
++import { useExploreParams } from '@/hooks/use-explore-params'
++import { useCalendar, useSensors } from '@/hooks/use-fire'
++import { GUIDE_TOPICS, guideMood, type GuideContext } from '@/lib/guide'
++import { cn } from '@/lib/utils'
++
++const HELLO =
++  'Hi! I am the paparajote of the mission. Ask me about the place on screen and I will read you what the record says.'
++
++/** How long the mouth moves for an answer: longer text, longer talk. */
++function talkTime(text: string): number {
++  return Math.min(4000, 600 + text.length * 12)
++}
++
++/** The mascot as a guide: fixed questions, answers read from the data on screen. */
++export function Guide() {
++  const [open, setOpen] = useState(false)
++  const [asked, setAsked] = useState<string | null>(null)
++  // the last text the mascot finished saying
++  const [spoken, setSpoken] = useState<string | null>(null)
++  const panelId = useId()
++  const [{ area, name, from, to }] = useExploreParams()
++  // the same queries the dashboard makes, so they come from the cache there
++  const calendar = useCalendar(area, { from, to })
++  const sensors = useSensors(area, { from, to })
++  const context: GuideContext = {
++    name,
++    calendar: calendar.data?.calendar,
++    ratio: sensors.data?.ratios.snpp_over_aqua,
++  }
++  const topic = GUIDE_TOPICS.find((t) => t.id === asked)
++  const text = topic ? topic.answer(context) : HELLO
++
++  const talking = open && spoken !== text
++
++  useEffect(() => {
++    if (!open) return
++    const timer = setTimeout(() => setSpoken(text), talkTime(text))
++    return () => clearTimeout(timer)
++  }, [open, text])
++
++  return (
++    <div className="fixed right-3 bottom-3 z-[650] flex flex-col items-end gap-2 sm:right-5 sm:bottom-5">
++      {open && (
++        <section
++          id={panelId}
++          aria-label="Paparajote, your guide"
++          className="bg-card border-line flex max-h-[min(560px,calc(100svh-6rem))] w-[min(360px,calc(100vw-1.5rem))] flex-col rounded-[20px] border shadow-2xl"
++        >
++          <header className="border-line flex items-center gap-3 border-b px-4 py-3">
++            <Mascot
++              mood={guideMood(context)}
++              talking={talking}
++              label="The paparajote mascot"
++              className="w-14 shrink-0"
++            />
++            <div className="min-w-0 flex-1">
++              <p className="text-[15px] leading-tight font-semibold">Paparajote</p>
++              <p className="text-mute truncate text-[11px]">Looking at {name}</p>
++            </div>
++            <button
++              type="button"
++              onClick={() => setOpen(false)}
++              aria-label="Close"
++              className="text-soft grid size-9 place-items-center rounded-full hover:bg-white/5"
++            >
++              <X className="size-5" />
++            </button>
++          </header>
++          <div className="space-y-3 overflow-y-auto p-4">
++            {topic && (
++              <p className="bg-saffron-soft text-saffron ml-auto w-fit max-w-[85%] rounded-[14px] rounded-br-[4px] px-3 py-2 text-[13px] font-semibold">
++                {topic.question}
++              </p>
++            )}
++            <p
++              aria-live="polite"
++              className="bg-card-2 max-w-[92%] rounded-[14px] rounded-bl-[4px] px-3 py-2.5 text-[13px] leading-relaxed"
++            >
++              {text}
++            </p>
++            <ul className="flex flex-wrap gap-1.5 pt-1" aria-label="Questions you can ask">
++              {GUIDE_TOPICS.filter((t) => t.id !== asked).map((t) => (
++                <li key={t.id}>
++                  <button
++                    type="button"
++                    onClick={() => setAsked(t.id)}
++                    className="border-line hover:border-saffron rounded-full border px-3 py-1.5 text-left text-[12px]"
++                  >
++                    {t.question}
++                  </button>
++                </li>
++              ))}
++            </ul>
++          </div>
++          <p className="border-line text-mute border-t px-4 py-2 text-[10px] leading-snug">
++            Guided answers, read from the data on screen. No generative AI: nothing here is made up.
++          </p>
++        </section>
++      )}
++      <button
++        type="button"
++        aria-expanded={open}
++        aria-controls={panelId}
++        aria-label={open ? 'Close the guide' : 'Ask Paparajote'}
++        title={open ? 'Close the guide' : 'Ask Paparajote'}
++        onClick={() => setOpen((o) => !o)}
++        className={cn(
++          'bg-card border-line relative grid size-14 place-items-center rounded-full border shadow-xl',
++          open && 'border-saffron',
++        )}
++      >
++        <img src={head} alt="" className="size-11" />
++        <span className="bg-saffron absolute -top-0.5 -right-0.5 grid size-5 place-items-center rounded-full text-[#100d0f]">
++          <MessageCircle className="size-3" />
++        </span>
++      </button>
++    </div>
++  )
++}
+diff --git a/frontend/src/components/home/drop-panel.tsx b/frontend/src/components/home/drop-panel.tsx
+index 6a3bc28..d1d2aee 100644
+--- a/frontend/src/components/home/drop-panel.tsx
++++ b/frontend/src/components/home/drop-panel.tsx
+@@ -1,23 +1,20 @@
+-import { CalendarDays, Download, Flame, MapPinOff, Waves, X } from 'lucide-react'
++import { CalendarDays, Flame, LayoutDashboard, MapPinOff, Waves, X } from 'lucide-react'
+ import { Link } from 'react-router'
+ 
+-import { calendarCsvUrl } from '@/api/calendar'
+ import { BigNumber, Delta } from '@/components/card'
++import { ExportPanel } from '@/components/export-panel'
+ import { Mascot } from '@/components/mascot'
+ import { ErrorState, Skeleton } from '@/components/state'
++import { useCountry } from '@/hooks/use-country'
+ import { useCalendar } from '@/hooks/use-fire'
+ import { areaToSearch, type Area } from '@/lib/area'
+-import { formatCount, formatMonth, monthName } from '@/lib/format'
++import { formatCoords, formatCount, formatMonth, monthName } from '@/lib/format'
+ import { yearSoFar } from '@/lib/insights'
+ import { statusMeta } from '@/lib/status'
+ import { cn } from '@/lib/utils'
+ 
+ const RADII = [1, 5, 10, 25] as const
+ 
+-function coords(lat: number, lon: number): string {
+-  return `${Math.abs(lat).toFixed(3)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(3)}° ${lon >= 0 ? 'E' : 'W'}`
+-}
+-
+ interface DropPanelProps {
+   lat: number
+   lon: number
+@@ -33,10 +30,13 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }:
+   const q = useCalendar(area, {})
+   const data = q.data
+   const cal = data?.calendar
+-  const place = data?.regions.find((r) => r.status === 'ok')?.name ?? data?.regions[0]?.name
++  // The country comes from real borders. The API's `regions` are every country
++  // whose bounding box touches the area, which named Spain "Netherlands".
++  const country = useCountry({ lat, lon })
++  const place = country.data?.name
+   const name = place
+     ? `${radiusKm} km around a point in ${place}`
+-    : `${radiusKm} km around ${coords(lat, lon)}`
++    : `${radiusKm} km around ${formatCoords(lat, lon)}`
+   const search = `?${new URLSearchParams({ area: areaToSearch(area), name }).toString()}`
+   const total = cal ? cal.years.reduce((s, y) => s + y.hotspots, 0) : 0
+   const lastFire = cal ? [...cal.months].reverse().find((m) => m.hotspots > 0) : undefined
+@@ -60,9 +60,9 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }:
+         <div className="min-w-0 flex-1">
+           <p className="eyebrow">Chosen point</p>
+           <h3 className="truncate text-[20px] leading-tight font-semibold">
+-            {place ?? 'Your point'}
++            {place ?? (country.isSuccess ? 'Open sea' : 'Your point')}
+           </h3>
+-          <p className="text-soft num font-mono text-[12px]">{coords(lat, lon)}</p>
++          <p className="text-soft num font-mono text-[12px]">{formatCoords(lat, lon)}</p>
+         </div>
+         <button
+           type="button"
+@@ -215,13 +215,22 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }:
+       )}
+ 
+       <div className="mt-auto flex flex-col gap-2">
+-        <a
+-          href={calendarCsvUrl(area, {})}
+-          download
++        <div className="bg-card-2 rounded-[16px] p-4">
++          <p className="mb-2 text-[13px] font-semibold">Download CSV</p>
++          <ExportPanel
++            key={`${lat},${lon},${radiusKm},${cal?.data_until}`}
++            area={area}
++            name={`This point, ${radiusKm} km`}
++            country={country.data}
++            dataUntil={cal?.data_until}
++          />
++        </div>
++        <Link
++          to={`/${search}`}
+           className="bg-saffron flex h-11 items-center justify-center gap-2 rounded-full text-[14px] font-semibold text-[#100d0f]"
+         >
+-          <Download className="size-5" /> Download CSV
+-        </a>
++          <LayoutDashboard className="size-5" /> Open on the dashboard map
++        </Link>
+         <div className="grid grid-cols-2 gap-2">
+           <Link
+             to={`/analysis${search}#calendar`}
+diff --git a/frontend/src/components/map/map-legend.tsx b/frontend/src/components/map/map-legend.tsx
+new file mode 100644
+index 0000000..8383dd9
+--- /dev/null
++++ b/frontend/src/components/map/map-legend.tsx
+@@ -0,0 +1,150 @@
++import { Flame } from 'lucide-react'
++
++import type { MapLayer } from '@/components/explore/area-map'
++import { FRP_CLASSES } from '@/lib/detections'
++import { formatCount } from '@/lib/format'
++import { STATUS_ORDER, statusMeta, TONE_COLOR } from '@/lib/status'
++import { cn } from '@/lib/utils'
++
++function Swatch({ color, round }: { color: string; round?: boolean }) {
++  return (
++    <span
++      aria-hidden
++      className={cn('inline-block size-3 shrink-0', round ? 'rounded-full' : 'rounded-[3px]')}
++      style={{ background: color }}
++    />
++  )
++}
++
++interface MapLegendProps {
++  layer: MapLayer
++  /** What the fire layer counts, e.g. "August 2017". */
++  period?: string
++  /** Hotspots of the brightest cell on the map. */
++  max?: number
++  cellDegrees?: number
++  className?: string
++}
++
++/** Says what every colour and shape on the map stands for. */
++export function MapLegend({ layer, period, max, cellDegrees, className }: MapLegendProps) {
++  if (layer === 'none') return null
++  return (
++    <div
++      aria-label="Map legend"
++      className={cn(
++        'bg-card/95 border-line max-w-[260px] rounded-[12px] border p-3 text-[11px] leading-snug backdrop-blur',
++        className,
++      )}
++    >
++      {layer === 'fire' && (
++        <>
++          <p className="font-semibold">
++            Harmonized hotspots{cellDegrees ? ` per ${cellDegrees}° cell` : ''}
++          </p>
++          {period && <p className="text-mute">{period}</p>}
++          <div className="mt-2 flex items-center gap-1">
++            <span className="text-mute font-mono">1</span>
++            {[1, 2, 3, 4, 5, 6].map((s) => (
++              <span
++                key={s}
++                aria-hidden
++                className="h-2.5 flex-1 rounded-[2px]"
++                style={{ background: `var(--heat-${s})` }}
++              />
++            ))}
++            <span className="text-mute font-mono">{max ? formatCount(max) : 'most'}</span>
++          </div>
++          <p className="text-mute mt-1.5">
++            Stronger colour and bigger circle mean more hotspots. A hotspot is one satellite
++            detection, not one fire.
++          </p>
++        </>
++      )}
++      {layer === 'anomalies' && (
++        <>
++          <p className="font-semibold">This month against its own history</p>
++          <ul className="mt-2 space-y-1">
++            {STATUS_ORDER.filter((s) => s !== 'normal' && s !== 'no_history').map((s) => (
++              <li key={s} className="flex items-center gap-2">
++                <Swatch color={TONE_COLOR[statusMeta(s).tone]} round />
++                {statusMeta(s).label}
++              </li>
++            ))}
++          </ul>
++          <p className="text-mute mt-1.5">Cells within their normal range are not drawn.</p>
++        </>
++      )}
++      {layer === 'detections' && (
++        <>
++          <p className="font-semibold">Each detection, by radiative power</p>
++          {period && <p className="text-mute">{period}</p>}
++          <ul className="mt-2 space-y-1">
++            {FRP_CLASSES.map((c) => (
++              <li key={c.label} className="flex items-center gap-2">
++                <Swatch color={c.color} />
++                {c.label}
++              </li>
++            ))}
++            <li className="flex items-center gap-2">
++              <Swatch color="var(--slate)" />
++              no power reported
++            </li>
++          </ul>
++          <p className="text-mute mt-1.5">
++            Zoom in and each one becomes the ground its pixel covers: about 375 m for VIIRS, 1 km
++            for MODIS, wider towards the edge of the swath.
++          </p>
++        </>
++      )}
++    </div>
++  )
++}
++
++/** The legend of the globe: its dots, its pins and the chosen point. */
++export function GlobeLegend({
++  colors,
++  month,
++  className,
++}: {
++  colors: string[]
++  month?: string
++  className?: string
++}) {
++  return (
++    <ul
++      aria-label="Globe legend"
++      className={cn(
++        'text-soft flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px]',
++        className,
++      )}
++    >
++      <li className="flex items-center gap-2">
++        <span className="flex items-center gap-0.5" aria-hidden>
++          {colors.map((c, i) => (
++            <span
++              key={c}
++              className="rounded-full"
++              style={{ background: c, width: 5 + i * 2.5, height: 5 + i * 2.5 }}
++            />
++          ))}
++        </span>
++        Hotspots per 1° cell{month ? `, ${month}` : ''}: fewer to more
++      </li>
++      <li className="flex items-center gap-2">
++        <span
++          aria-hidden
++          className="grid size-5 place-items-center rounded-[6px]"
++          style={{ background: 'var(--coral)' }}
++        >
++          <Flame className="size-3 text-[#100d0f]" fill="currentColor" />
++        </span>
++        Far above normal for this month (the four biggest)
++      </li>
++      <li className="flex items-center gap-2">
++        <span aria-hidden className="bg-saffron size-3 rounded-full border-2 border-[#100d0f]" />
++        The point you chose
++      </li>
++    </ul>
++  )
++}
+diff --git a/frontend/src/components/mascot.tsx b/frontend/src/components/mascot.tsx
+index 5409c56..64f7d27 100644
+--- a/frontend/src/components/mascot.tsx
++++ b/frontend/src/components/mascot.tsx
+@@ -6,6 +6,8 @@ import eyesHalf from '@/assets/mascot/eyes-half.png'
+ import eyesHappy from '@/assets/mascot/eyes-happy.png'
+ import eyesOpen from '@/assets/mascot/eyes-open.png'
+ import mouthFrown from '@/assets/mascot/mouth-frown.png'
++import mouthLarge from '@/assets/mascot/mouth-large.png'
++import mouthMedium from '@/assets/mascot/mouth-medium.png'
+ import mouthO from '@/assets/mascot/mouth-o.png'
+ import mouthRest from '@/assets/mascot/mouth-rest.png'
+ import mouthSmall from '@/assets/mascot/mouth-small.png'
+@@ -52,23 +54,39 @@ function useBlink(enabled: boolean): boolean {
+   return closed
+ }
+ 
++const TALK = [mouthSmall, mouthMedium, mouthLarge, mouthMedium, mouthSmall, mouthRest]
++
++/** Moves the mouth through the talking frames while `on`. */
++function useTalk(on: boolean): string | null {
++  const [frame, setFrame] = useState(0)
++  useEffect(() => {
++    if (!on || reducedMotion()) return
++    const timer = setInterval(() => setFrame((f) => (f + 1) % TALK.length), 110)
++    return () => clearInterval(timer)
++  }, [on])
++  return on && !reducedMotion() ? TALK[frame] : null
++}
++
+ interface MascotProps {
+   mood: Mood
++  /** Moves the mouth, as if speaking. */
++  talking?: boolean
+   /** Describes the mascot for screen readers. */
+   label: string
+   className?: string
+ }
+ 
+ /** The paparajote astronaut, reacting to the fire situation. */
+-export function Mascot({ mood, label, className }: MascotProps) {
++export function Mascot({ mood, talking = false, label, className }: MascotProps) {
+   const face = FACES[mood]
+   const blinking = useBlink(face.eyes === eyesOpen)
++  const speaking = useTalk(talking)
+   const layer = 'absolute inset-0 size-full select-none'
+   return (
+     <div role="img" aria-label={label} className={cn('relative aspect-square', className)}>
+       <img src={base} alt="" className={layer} draggable={false} />
+       <img src={blinking ? eyesClosed : face.eyes} alt="" className={layer} draggable={false} />
+-      <img src={face.mouth} alt="" className={layer} draggable={false} />
++      <img src={speaking ?? face.mouth} alt="" className={layer} draggable={false} />
+     </div>
+   )
+ }
+diff --git a/frontend/src/hooks/use-country.ts b/frontend/src/hooks/use-country.ts
+new file mode 100644
+index 0000000..a3a5ee3
+--- /dev/null
++++ b/frontend/src/hooks/use-country.ts
+@@ -0,0 +1,13 @@
++import { useQuery } from '@tanstack/react-query'
++
++import { countryAt } from '@/lib/country'
++
++/** The country under a point, from its real borders. */
++export function useCountry(point: { lat: number; lon: number } | null) {
++  return useQuery({
++    queryKey: ['country', point?.lat, point?.lon] as const,
++    queryFn: () => countryAt(point!.lat, point!.lon),
++    enabled: !!point,
++    staleTime: Infinity,
++  })
++}
+diff --git a/frontend/src/hooks/use-mode.ts b/frontend/src/hooks/use-mode.ts
+new file mode 100644
+index 0000000..e8100b2
+--- /dev/null
++++ b/frontend/src/hooks/use-mode.ts
+@@ -0,0 +1,9 @@
++import { useSyncExternalStore } from 'react'
++
++import { getMode, setMode, subscribeMode, type Mode } from '@/lib/mode'
++
++/** Day or night, shared by the whole app. */
++export function useMode(): [Mode, (m: Mode) => void] {
++  const mode = useSyncExternalStore(subscribeMode, getMode, () => 'night' as const)
++  return [mode, setMode]
++}
+diff --git a/frontend/src/index.css b/frontend/src/index.css
+index 4ec7fae..7533864 100644
+--- a/frontend/src/index.css
++++ b/frontend/src/index.css
+@@ -35,6 +35,9 @@
+   --heat-4: #ee8f5a;
+   --heat-5: #f0c048;
+   --heat-6: #fbe7a8;
++  /* numbers on the dark steps (1-3) and on the bright ones (4-6) */
++  --heat-ink-lo: #f2ece4;
++  --heat-ink-hi: #100d0f;
+ 
+   /* anomaly ramp: far below .. far above */
+   --anom-much-below: #a9bed0;
+@@ -79,6 +82,57 @@
+   --ring: var(--saffron);
+ }
+ 
++/*
++ * Day mode: the same Brasa hues on paper. Night is the default above. The mode
++ * also picks which satellite pass the detail layer shows (see lib/mode.ts).
++ */
++:root.light {
++  --bg: #f4efe8;
++  --rail: #ebe4da;
++  --card: #fffdf9;
++  --card-2: #f1eae1;
++  --line: #ddd3c8;
++  --bone: #1d1719;
++  --soft: #5b4f54;
++  --mute: #7d7277;
++  --saffron: #b3740c;
++  --saffron-soft: rgb(179 116 12 / 0.14);
++  --coral: #c4532a;
++  --garnet: #a32a44;
++  --slate: #4f6b84;
++  --slate-soft: rgb(79 107 132 / 0.13);
++
++  /* on paper the ramp runs the other way: pale (little) to dark (a lot) */
++  --heat-0: #ebe3da;
++  --heat-1: #f7dfc4;
++  --heat-2: #f2bd8c;
++  --heat-3: #e88f5c;
++  --heat-4: #cf5a3c;
++  --heat-5: #a8344b;
++  --heat-6: #5e1a2c;
++  --heat-ink-lo: #1d1719;
++  --heat-ink-hi: #fffdf9;
++
++  --anom-much-below: #7d98b0;
++  --anom-below: #a9bed0;
++  --anom-normal: #d9d3cc;
++  --anom-none: #efe9e1;
++  --anom-above: #c23b54;
++  --anom-much-above: #c4532a;
++
++  --tone-critical: #c4532a;
++  --tone-serious: #a32a44;
++  --tone-neutral: #8d8287;
++  --tone-cool: #4f6b84;
++  --tone-cooler: #7d98b0;
++  --tone-none: #cfc6be;
++
++  --series-harmonized: #b3740c;
++  --series-aqua: #c4532a;
++  --series-snpp: #4f6b84;
++  --series-n20: #a32a44;
++}
++
+ @theme inline {
+   --font-sans: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+   --font-mono: 'Chivo Mono', ui-monospace, monospace;
+@@ -135,6 +189,9 @@
+   html {
+     color-scheme: dark;
+   }
++  html.light {
++    color-scheme: light;
++  }
+   body {
+     @apply bg-background text-bone font-sans antialiased;
+     font-optical-sizing: auto;
+@@ -218,6 +275,9 @@
+   background: rgb(16 13 15 / 0.75) !important;
+   color: var(--mute);
+ }
++.light .leaflet-control-attribution {
++  background: rgb(255 253 249 / 0.8) !important;
++}
+ .leaflet-control-attribution a {
+   color: var(--soft);
+ }
+@@ -226,3 +286,16 @@
+   color: var(--bone);
+   border-color: var(--line);
+ }
++.leaflet-tooltip {
++  background: var(--card);
++  color: var(--bone);
++  border-color: var(--line);
++  font-size: 12px;
++}
++.leaflet-tooltip::before {
++  display: none;
++}
++/* the hover veil of the night theme, darkened for paper */
++.light .hover\:bg-white\/5:hover {
++  background: rgb(0 0 0 / 0.05);
++}
+diff --git a/frontend/src/lib/basemaps.ts b/frontend/src/lib/basemaps.ts
+new file mode 100644
+index 0000000..98238c8
+--- /dev/null
++++ b/frontend/src/lib/basemaps.ts
+@@ -0,0 +1,114 @@
++/**
++ * "Spectral vision": the map seen through each sensor, from NASA GIBS daily
++ * imagery. These are pictures of the surface, not the hotspot detections.
++ */
++export interface Basemap {
++  id: string
++  label: string
++  /** Satellite and instrument, or null for the plain reference map. */
++  sensor: string | null
++  /** What the composite shows, in one sentence. */
++  reads: string
++  /** GIBS layer identifier; null for the reference map. */
++  layer: string | null
++  format: 'jpg' | 'png'
++  /** Deepest zoom GIBS serves; the map upscales beyond it. */
++  level: number
++  /** First day with imagery (YYYY-MM-DD). */
++  since: string | null
++}
++
++export const BASEMAPS: Basemap[] = [
++  {
++    id: 'reference',
++    label: 'Reference map',
++    sensor: null,
++    reads: 'A muted map, so the fire data stands out.',
++    layer: null,
++    format: 'jpg',
++    level: 16,
++    since: null,
++  },
++  {
++    id: 'aqua-true',
++    label: 'MODIS true colour',
++    sensor: 'Aqua · MODIS',
++    reads: 'Bands 1-4-3, as the eye would see it: smoke plumes are grey-blue, clouds white.',
++    layer: 'MODIS_Aqua_CorrectedReflectance_TrueColor',
++    format: 'jpg',
++    level: 9,
++    since: '2002-07-04',
++  },
++  {
++    id: 'aqua-721',
++    label: 'MODIS false colour 7-2-1',
++    sensor: 'Aqua · MODIS',
++    reads:
++      'Shortwave infrared in red: burn scars look red-brown, vegetation bright green, and the infrared sees through thin smoke.',
++    layer: 'MODIS_Aqua_CorrectedReflectance_Bands721',
++    format: 'jpg',
++    level: 9,
++    since: '2002-07-04',
++  },
++  {
++    id: 'snpp-true',
++    label: 'VIIRS true colour',
++    sensor: 'Suomi NPP · VIIRS',
++    reads: 'Bands I1-M4-M3, natural colour from the sensor that replaces MODIS.',
++    layer: 'VIIRS_SNPP_CorrectedReflectance_TrueColor',
++    format: 'jpg',
++    level: 9,
++    since: '2015-11-24',
++  },
++  {
++    id: 'snpp-m11',
++    label: 'VIIRS false colour M11-I2-I1',
++    sensor: 'Suomi NPP · VIIRS',
++    reads:
++      'The VIIRS match of MODIS 7-2-1: burn scars red-brown, vegetation green, active fire fronts glow orange.',
++    layer: 'VIIRS_SNPP_CorrectedReflectance_BandsM11-I2-I1',
++    format: 'jpg',
++    level: 9,
++    since: '2015-11-24',
++  },
++  {
++    id: 'n20-m11',
++    label: 'VIIRS false colour M11-I2-I1',
++    sensor: 'NOAA-20 · VIIRS',
++    reads: 'The same composite from NOAA-20, the satellite the record continues with.',
++    layer: 'VIIRS_NOAA20_CorrectedReflectance_BandsM11-I2-I1',
++    format: 'jpg',
++    level: 9,
++    since: '2018-01-05',
++  },
++]
++
++export const DEFAULT_BASEMAP = BASEMAPS[0]
++
++export function basemapById(id: string | null | undefined): Basemap {
++  return BASEMAPS.find((b) => b.id === id) ?? DEFAULT_BASEMAP
++}
++
++/** Whether the sensor already had imagery on that day. */
++export function hasImagery(b: Basemap, day: string): boolean {
++  return !!b.layer && !!b.since && day >= b.since
++}
++
++/** The XYZ tile template of a GIBS layer on one day. */
++export function gibsUrl(b: Basemap, day: string): string {
++  return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${b.layer}/default/${day}/GoogleMapsCompatible_Level${b.level}/{z}/{y}/{x}.${b.format}`
++}
++
++/** The bands each sensor detects fire with. */
++export const FIRE_BANDS = [
++  {
++    sensor: 'MODIS (Aqua)',
++    pixel: '1 km',
++    bands: 'channels 21/22 at 3.96 µm and 31 at 11 µm',
++  },
++  {
++    sensor: 'VIIRS (Suomi NPP, NOAA-20)',
++    pixel: '375 m',
++    bands: 'I4 at 3.74 µm and I5 at 11.45 µm',
++  },
++]
+diff --git a/frontend/src/lib/compare.test.ts b/frontend/src/lib/compare.test.ts
+new file mode 100644
+index 0000000..3820730
+--- /dev/null
++++ b/frontend/src/lib/compare.test.ts
+@@ -0,0 +1,29 @@
++import { describe, expect, it } from 'vitest'
++
++import { calendarFixture } from '@/test/fixtures'
++
++import { changePct, defaultPeriods, periodRange, periodTotal } from './compare'
++
++describe('compare', () => {
++  it('covers one month or a whole year', () => {
++    expect(periodRange('2017-08', 'month')).toEqual({ from: '2017-08', to: '2017-08' })
++    expect(periodRange('2017', 'year')).toEqual({ from: '2017-01', to: '2017-12' })
++  })
++
++  it('adds up a period and flags estimated and incomplete ones', () => {
++    const c = calendarFixture()
++    expect(periodTotal(c, '2011', 'year')).toMatchObject({ hotspots: 211, estimated: true })
++    expect(periodTotal(c, '2012-08', 'month')).toMatchObject({ hotspots: 102, estimated: false })
++    expect(periodTotal(c, '2013', 'year').incomplete).toBe(true)
++  })
++
++  it('starts ten years apart', () => {
++    expect(defaultPeriods('2026-11-10', 'month')).toEqual({ a: '2016-11', b: '2026-11' })
++    expect(defaultPeriods('2026-11-10', 'year')).toEqual({ a: '2015', b: '2025' })
++  })
++
++  it('compares B with A', () => {
++    expect(changePct(100, 150)).toBe(50)
++    expect(changePct(0, 10)).toBeNull()
++  })
++})
+diff --git a/frontend/src/lib/compare.ts b/frontend/src/lib/compare.ts
+new file mode 100644
+index 0000000..8ac6e8a
+--- /dev/null
++++ b/frontend/src/lib/compare.ts
+@@ -0,0 +1,38 @@
++import type { Calendar } from '@/api/types'
++
++export type Unit = 'month' | 'year'
++
++/** The months a period covers: one month, or a whole year. */
++export function periodRange(period: string, unit: Unit): { from: string; to: string } {
++  return unit === 'year'
++    ? { from: `${period.slice(0, 4)}-01`, to: `${period.slice(0, 4)}-12` }
++    : { from: period, to: period }
++}
++
++/** The harmonized total of a period, and whether any of it is estimated from MODIS. */
++export function periodTotal(c: Calendar, period: string, unit: Unit) {
++  const { from, to } = periodRange(period, unit)
++  const months = c.months.filter((m) => m.month >= from && m.month <= to)
++  return {
++    hotspots: months.reduce((s, m) => s + m.hotspots, 0),
++    months: months.length,
++    estimated: months.some((m) => m.estimated),
++    incomplete: months.some((m) => m.incomplete) || (unit === 'year' && months.length < 12),
++  }
++}
++
++/** Default periods: the latest one and the same one ten years earlier. */
++export function defaultPeriods(dataUntil: string, unit: Unit): { a: string; b: string } {
++  const year = Number(dataUntil.slice(0, 4))
++  if (unit === 'year') {
++    const b = year - 1 // the last complete year
++    return { a: String(Math.max(2003, b - 10)), b: String(b) }
++  }
++  const month = dataUntil.slice(5, 7)
++  return { a: `${year - 10}-${month}`, b: `${year}-${month}` }
++}
++
++/** B against A, in percent; null when A is zero. */
++export function changePct(a: number, b: number): number | null {
++  return a > 0 ? ((b - a) / a) * 100 : null
++}
+diff --git a/frontend/src/lib/country.test.ts b/frontend/src/lib/country.test.ts
+new file mode 100644
+index 0000000..57e8e31
+--- /dev/null
++++ b/frontend/src/lib/country.test.ts
+@@ -0,0 +1,39 @@
++import { describe, expect, it } from 'vitest'
++
++import { countryAt, decimate } from './country'
++
++describe('countryAt', () => {
++  it.each([
++    ['Madrid', 40.42, -3.7, 'Spain'],
++    ['Granada, southern Spain', 37.18, -3.6, 'Spain'],
++    ['Murcia', 37.99, -1.13, 'Spain'],
++    ['Lisbon', 38.72, -9.14, 'Portugal'],
++    ['Amsterdam', 52.37, 4.9, 'Netherlands'],
++    ['Algiers', 36.7, 3.06, 'Algeria'],
++    ['Santiago de Chile', -33.45, -70.67, 'Chile'],
++  ])('finds %s inside its own borders', async (_, lat, lon, name) => {
++    expect((await countryAt(lat, lon))?.name).toBe(name)
++  })
++
++  it('answers nothing at sea', async () => {
++    expect(await countryAt(36.0, -20.0)).toBeNull()
++  })
++
++  it('gives the landmass under the point as a polygon the API accepts', async () => {
++    const spain = await countryAt(40.42, -3.7)
++    expect(spain?.outline?.kind).toBe('polygon')
++    if (spain?.outline?.kind !== 'polygon') return
++    expect(spain.outline.points.length).toBeLessThanOrEqual(200)
++    // mainland Spain, not the Canary Islands
++    expect(Math.min(...spain.outline.points.map((p) => p[1]))).toBeGreaterThan(35)
++  })
++})
++
++describe('decimate', () => {
++  it('drops the closing point and keeps at most the asked corners', () => {
++    const ring = Array.from({ length: 1001 }, (_, i) => [i % 1000, 0])
++    const out = decimate(ring, 100)
++    expect(out.length).toBeLessThanOrEqual(100)
++    expect(out[0]).toEqual([0, 0])
++  })
++})
+diff --git a/frontend/src/lib/country.ts b/frontend/src/lib/country.ts
+new file mode 100644
+index 0000000..b5ccf2c
+--- /dev/null
++++ b/frontend/src/lib/country.ts
+@@ -0,0 +1,82 @@
++import { geoContains } from 'd3-geo'
++import type { Feature, MultiPolygon, Polygon, Position } from 'geojson'
++import { feature } from 'topojson-client'
++import type { GeometryCollection, Topology } from 'topojson-specification'
++
++import type { Area } from './area'
++
++export type CountryFeature = Feature<Polygon | MultiPolygon, { name: string }>
++
++export interface Country {
++  name: string
++  /** The landmass under the point, as a polygon the API accepts; null when it cannot be drawn. */
++  outline: Area | null
++}
++
++/** The API takes polygons of up to 200 corners. */
++const MAX_CORNERS = 160
++
++/** Keeps at most `max` corners of a ring, evenly spaced, without the closing point. */
++export function decimate(ring: Position[], max = MAX_CORNERS): [number, number][] {
++  const open =
++    ring.length > 1 && ring[0][0] === ring.at(-1)![0] && ring[0][1] === ring.at(-1)![1]
++      ? ring.slice(0, -1)
++      : ring
++  const step = Math.max(1, Math.ceil(open.length / max))
++  return open.filter((_, i) => i % step === 0).map((p) => [p[0], p[1]])
++}
++
++function outlineOf(f: CountryFeature, lonLat: [number, number]): Area | null {
++  const polygons = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates
++  const hit = polygons.find((p) => geoContains({ type: 'Polygon', coordinates: p }, lonLat))
++  if (!hit) return null
++  const points = decimate(hit[0])
++  const lons = points.map((p) => p[0])
++  // landmasses across the antimeridian do not fit a simple polygon
++  if (points.length < 3 || Math.max(...lons) - Math.min(...lons) > 180) return null
++  return { kind: 'polygon', points }
++}
++
++/**
++ * The country whose borders contain the point. Borders, not bounding boxes:
++ * the box of the Netherlands reaches the Caribbean and covers Spain.
++ */
++export function findCountry(features: CountryFeature[], lat: number, lon: number): Country | null {
++  // the exact point first, then a ring around it: harbours and estuaries fall
++  // just outside borders drawn at 1:50m
++  for (const d of [0, 0.1, 0.25]) {
++    for (const [dx, dy] of d === 0 ? [[0, 0]] : NEARBY) {
++      const lonLat: [number, number] = [lon + dx * d, lat + dy * d]
++      const f = features.find((c) => geoContains(c, lonLat))
++      if (f) return { name: f.properties.name, outline: outlineOf(f, lonLat) }
++    }
++  }
++  return null
++}
++
++const NEARBY = [
++  [1, 0],
++  [-1, 0],
++  [0, 1],
++  [0, -1],
++  [1, 1],
++  [1, -1],
++  [-1, 1],
++  [-1, -1],
++]
++
++let atlas: Promise<CountryFeature[]> | null = null
++
++/** Natural Earth 1:50m borders, loaded the first time they are needed. */
++function loadAtlas(): Promise<CountryFeature[]> {
++  atlas ??= import('world-atlas/countries-50m.json').then((m) => {
++    const topo = m.default as unknown as Topology
++    const all = feature(topo, topo.objects.countries as GeometryCollection<{ name: string }>)
++    return all.features as CountryFeature[]
++  })
++  return atlas
++}
++
++export async function countryAt(lat: number, lon: number): Promise<Country | null> {
++  return findCountry(await loadAtlas(), lat, lon)
++}
+diff --git a/frontend/src/lib/detections.test.ts b/frontend/src/lib/detections.test.ts
+new file mode 100644
+index 0000000..439a704
+--- /dev/null
++++ b/frontend/src/lib/detections.test.ts
+@@ -0,0 +1,55 @@
++import { describe, expect, it } from 'vitest'
++
++import { detailDays, footprint, frpColor, parseDetections } from './detections'
++
++const res = {
++  from: '2025-08-01',
++  to: '2025-08-07',
++  count: 2,
++  columns: [
++    'latitude',
++    'longitude',
++    'acq_date',
++    'acq_time',
++    'satellite',
++    'confidence',
++    'frp',
++    'scan',
++    'track',
++    'daynight',
++    'type',
++    'provisional',
++    'source',
++  ],
++  rows: [
++    [38.0, -1.2, '2025-08-03', 135, 'N20', 'n', 12.5, 0.4, 0.38, 'D', 0, false, 'VIIRS_NOAA20_SP'],
++    [38.1, -1.3, '2025-08-03', '0212', 'Aqua', '80', null, 1.1, 1.0, 'N', 0, true, 'MODIS_NRT'],
++  ],
++  attribution: '',
++}
++
++describe('detections', () => {
++  it('reads the rows by column name', () => {
++    const [a, b] = parseDetections(res)
++    expect(a).toMatchObject({ lat: 38, time: '0135', satellite: 'N20', frp: 12.5, pass: 'D' })
++    expect(b).toMatchObject({ frp: null, pass: 'N', provisional: true, scanKm: 1.1 })
++  })
++
++  it('draws the pixel at its real size', () => {
++    const [[s, w], [n, e]] = footprint(parseDetections(res)[0])
++    expect((n - s) * 111.32).toBeCloseTo(0.38, 2)
++    expect((e - w) * 111.32 * Math.cos((38 * Math.PI) / 180)).toBeCloseTo(0.4, 2)
++  })
++
++  it('colours by radiative power', () => {
++    expect(frpColor(2)).toBe('var(--heat-3)')
++    expect(frpColor(500)).toBe('var(--heat-6)')
++    expect(frpColor(null)).toBe('var(--slate)')
++  })
++
++  it('asks for a whole month, or the last week of data', () => {
++    expect(detailDays('2017-02', '2025-11-10')).toEqual({ from: '2017-02-01', to: '2017-02-28' })
++    expect(detailDays('2025-11', '2025-11-10')).toEqual({ from: '2025-11-01', to: '2025-11-10' })
++    expect(detailDays(null, '2025-11-10')).toEqual({ from: '2025-11-04', to: '2025-11-10' })
++  })
++})
+diff --git a/frontend/src/lib/detections.ts b/frontend/src/lib/detections.ts
+new file mode 100644
+index 0000000..a7f9108
+--- /dev/null
++++ b/frontend/src/lib/detections.ts
+@@ -0,0 +1,98 @@
++import type { HotspotsResponse } from '@/api/hotspots'
++
++import type { Bounds } from './area'
++
++/** One satellite detection at its own resolution. */
++export interface Detection {
++  lat: number
++  lon: number
++  date: string
++  time: string
++  satellite: string
++  confidence: string
++  frp: number | null
++  scanKm: number | null
++  trackKm: number | null
++  pass: 'D' | 'N' | null
++  provisional: boolean
++}
++
++function numberOrNull(v: unknown): number | null {
++  const n = typeof v === 'number' ? v : Number(v)
++  return v === null || v === '' || !Number.isFinite(n) ? null : n
++}
++
++/** Reads the compact rows of /api/hotspots by column name. */
++export function parseDetections(res: HotspotsResponse): Detection[] {
++  const at = (name: string) => res.columns.indexOf(name)
++  const c = {
++    lat: at('latitude'),
++    lon: at('longitude'),
++    date: at('acq_date'),
++    time: at('acq_time'),
++    satellite: at('satellite'),
++    confidence: at('confidence'),
++    frp: at('frp'),
++    scan: at('scan'),
++    track: at('track'),
++    pass: at('daynight'),
++    provisional: at('provisional'),
++  }
++  return res.rows.map((r) => {
++    const pass = String(r[c.pass] ?? '').toUpperCase()[0]
++    return {
++      lat: Number(r[c.lat]),
++      lon: Number(r[c.lon]),
++      date: String(r[c.date] ?? ''),
++      time: String(r[c.time] ?? '').padStart(4, '0'),
++      satellite: String(r[c.satellite] ?? ''),
++      confidence: String(r[c.confidence] ?? ''),
++      frp: numberOrNull(r[c.frp]),
++      scanKm: numberOrNull(r[c.scan]),
++      trackKm: numberOrNull(r[c.track]),
++      pass: pass === 'D' || pass === 'N' ? pass : null,
++      provisional: r[c.provisional] === true || r[c.provisional] === 'true',
++    }
++  })
++}
++
++const KM_PER_DEGREE = 111.32
++
++/**
++ * The ground a detection's pixel covers, from its scan and track size. The
++ * pixel is drawn north-up; the real one is tilted with the orbit.
++ */
++export function footprint(d: Detection): Bounds {
++  const scan = d.scanKm ?? 0.375
++  const track = d.trackKm ?? 0.375
++  const dLat = track / 2 / KM_PER_DEGREE
++  const dLon = scan / 2 / (KM_PER_DEGREE * Math.max(Math.cos((d.lat * Math.PI) / 180), 0.01))
++  return [
++    [d.lat - dLat, d.lon - dLon],
++    [d.lat + dLat, d.lon + dLon],
++  ]
++}
++
++/** Fire radiative power classes of the detail layer, in MW. */
++export const FRP_CLASSES = [
++  { upTo: 5, label: 'under 5 MW', color: 'var(--heat-3)' },
++  { upTo: 20, label: '5 to 20 MW', color: 'var(--heat-4)' },
++  { upTo: 100, label: '20 to 100 MW', color: 'var(--heat-5)' },
++  { upTo: Infinity, label: 'over 100 MW', color: 'var(--heat-6)' },
++]
++
++export function frpColor(frp: number | null): string {
++  if (frp === null) return 'var(--slate)'
++  return FRP_CLASSES.find((c) => frp < c.upTo)!.color
++}
++
++/** The days the detail layer asks for: a whole month, or the last week of data. */
++export function detailDays(month: string | null, dataUntil: string): { from: string; to: string } {
++  if (month) {
++    const [y, m] = month.split('-').map(Number)
++    const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
++    return { from: `${month}-01`, to: last < dataUntil ? last : dataUntil }
++  }
++  const from = new Date(Date.parse(dataUntil) - 6 * 86_400_000).toISOString().slice(0, 10)
++  return { from, to: dataUntil }
++}
+diff --git a/frontend/src/lib/export.test.ts b/frontend/src/lib/export.test.ts
+new file mode 100644
+index 0000000..48e42d7
+--- /dev/null
++++ b/frontend/src/lib/export.test.ts
+@@ -0,0 +1,22 @@
++import { describe, expect, it } from 'vitest'
++
++import { monthSpanDays, slug } from './export'
++
++describe('export helpers', () => {
++  it('turns months into whole days', () => {
++    expect(monthSpanDays('2024-02', '2024-02')).toEqual({
++      from: '2024-02-01',
++      to: '2024-02-29',
++      days: 29,
++    })
++    expect(monthSpanDays('2025-01', '2025-12', '2025-11-10')).toMatchObject({
++      to: '2025-11-10',
++      days: 314,
++    })
++  })
++
++  it('names files after the place', () => {
++    expect(slug('Región de Murcia')).toBe('region-de-murcia')
++    expect(slug('···')).toBe('area')
++  })
++})
+diff --git a/frontend/src/lib/export.ts b/frontend/src/lib/export.ts
+new file mode 100644
+index 0000000..220c4f2
+--- /dev/null
++++ b/frontend/src/lib/export.ts
+@@ -0,0 +1,25 @@
++const DAY = 86_400_000
++
++/** Today (YYYY-MM-DD), for when the data has not said yet how far it reaches. */
++export const TODAY = new Date().toISOString().slice(0, 10)
++
++/** First and last day of a span of months ("YYYY-MM"), the last capped at `until`. */
++export function monthSpanDays(from: string, to: string, until?: string) {
++  const [y, m] = to.split('-').map(Number)
++  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
++  const end = until && until < last ? until : last
++  const start = `${from}-01`
++  return { from: start, to: end, days: Math.round((Date.parse(end) - Date.parse(start)) / DAY) + 1 }
++}
++
++/** A file-name friendly version of a place name. */
++export function slug(name: string): string {
++  return (
++    name
++      .normalize('NFD')
++      .replace(/\p{Diacritic}/gu, '')
++      .toLowerCase()
++      .replace(/[^a-z0-9]+/g, '-')
++      .replace(/^-|-$/g, '') || 'area'
++  )
++}
+diff --git a/frontend/src/lib/format.ts b/frontend/src/lib/format.ts
+index ee938b7..98f300c 100644
+--- a/frontend/src/lib/format.ts
++++ b/frontend/src/lib/format.ts
+@@ -44,3 +44,8 @@ export function formatSignedPct(v: number): string {
+   if (r === 0) return '0%'
+   return `${r > 0 ? '+' : '−'}${whole.format(Math.abs(r))}%`
+ }
++
++/** "37.992° N, 1.130° W". */
++export function formatCoords(lat: number, lon: number): string {
++  return `${Math.abs(lat).toFixed(3)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(3)}° ${lon >= 0 ? 'E' : 'W'}`
++}
+diff --git a/frontend/src/lib/globe.test.ts b/frontend/src/lib/globe.test.ts
+index 6be0c6a..b59164b 100644
+--- a/frontend/src/lib/globe.test.ts
++++ b/frontend/src/lib/globe.test.ts
+@@ -1,6 +1,6 @@
+ import { describe, expect, it } from 'vitest'
+ 
+-import { makeProjection, pointAt, visible } from './globe'
++import { clampZoom, makeProjection, pointAt, visible } from './globe'
+ 
+ describe('globe geometry', () => {
+   const p = makeProjection(400, [5, -30])
+@@ -23,3 +23,24 @@ describe('globe geometry', () => {
+     expect(pointAt(p, [2, 2])).toBeNull()
+   })
+ })
++
++describe('globe zoom', () => {
++  it('magnifies around the rotation center and stays within its limits', () => {
++    const near = makeProjection(400, [5, -30], 4)
++    const [x, y] = near([-5, 30])!
++    expect(x).toBeCloseTo(200)
++    expect(y).toBeCloseTo(200)
++    expect(near.scale()).toBeCloseTo(makeProjection(400, [5, -30]).scale() * 4)
++    expect(clampZoom(0.2)).toBe(1)
++    expect(clampZoom(50)).toBe(8)
++  })
++
++  it('still turns a tap into coordinates when zoomed in', () => {
++    const near = makeProjection(400, [5, -30], 4)
++    const ll = pointAt(near, [10, 10])!
++    expect(ll).not.toBeNull()
++    const back = near(ll)!
++    expect(back[0]).toBeCloseTo(10)
++    expect(back[1]).toBeCloseTo(10)
++  })
++})
+diff --git a/frontend/src/lib/globe.ts b/frontend/src/lib/globe.ts
+index 1d85e39..2447ca4 100644
+--- a/frontend/src/lib/globe.ts
++++ b/frontend/src/lib/globe.ts
+@@ -2,10 +2,20 @@ import { geoDistance, geoOrthographic, type GeoProjection } from 'd3-geo'
+ 
+ export type Rotation = [lambda: number, phi: number]
+ 
+-/** An orthographic globe of the given pixel size, rotated to [λ, φ]. */
+-export function makeProjection(size: number, rotate: Rotation): GeoProjection {
++/** Fewer to more hotspots in a cell of the globe. */
++export const FIRE_COLORS = ['#6e2536', '#c23b54', '#e0623f', '#ee8f5a']
++
++export const MIN_ZOOM = 1
++export const MAX_ZOOM = 8
++
++export function clampZoom(z: number): number {
++  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z))
++}
++
++/** An orthographic globe of the given pixel size, rotated to [λ, φ] and magnified `zoom` times. */
++export function makeProjection(size: number, rotate: Rotation, zoom = 1): GeoProjection {
+   return geoOrthographic()
+-    .scale(size / 2 - 2)
++    .scale((size / 2 - 2) * zoom)
+     .translate([size / 2, size / 2])
+     .rotate([rotate[0], rotate[1], 0])
+     .clipAngle(90)
+diff --git a/frontend/src/lib/guide.test.ts b/frontend/src/lib/guide.test.ts
+new file mode 100644
+index 0000000..a1e8bb8
+--- /dev/null
++++ b/frontend/src/lib/guide.test.ts
+@@ -0,0 +1,32 @@
++import { describe, expect, it } from 'vitest'
++
++import { calendarFixture } from '@/test/fixtures'
++
++import { GUIDE_TOPICS, guideMood } from './guide'
++
++const topic = (id: string) => GUIDE_TOPICS.find((t) => t.id === id)!
++
++describe('guide', () => {
++  it('reads the current month from the data on screen', () => {
++    const text = topic('here').answer({ name: 'Murcia', calendar: calendarFixture() })
++    expect(text).toContain('In Murcia, March 2013 is far above normal: 10 hotspots so far.')
++    expect(text).toContain('3 other years')
++  })
++
++  it('describes the fire season', () => {
++    const text = topic('season').answer({ name: 'Murcia', calendar: calendarFixture() })
++    expect(text).toContain('the usual peak is August')
++    expect(text).toContain('August 2012 with 102 hotspots')
++  })
++
++  it('never invents numbers while the data is loading', () => {
++    expect(topic('here').answer({ name: 'Murcia' })).toMatch(/still loading/)
++    expect(topic('sensors').answer({ name: 'Murcia' })).not.toMatch(/Here VIIRS counted/)
++    expect(topic('sensors').answer({ name: 'Murcia', ratio: 5 })).toContain('about 5 hotspots')
++  })
++
++  it('looks alarmed when the month is far above normal', () => {
++    expect(guideMood({ name: 'x', calendar: calendarFixture() })).toBe('alarmed')
++    expect(guideMood({ name: 'x' })).toBe('curious')
++  })
++})
+diff --git a/frontend/src/lib/guide.ts b/frontend/src/lib/guide.ts
+new file mode 100644
+index 0000000..99b8a20
+--- /dev/null
++++ b/frontend/src/lib/guide.ts
+@@ -0,0 +1,92 @@
++import type { Calendar } from '@/api/types'
++
++import { formatCount, formatMonth, monthName } from './format'
++import { peakShare } from './insights'
++import { statusMeta, type Mood } from './status'
++
++export interface GuideContext {
++  /** The place on screen. */
++  name: string
++  calendar?: Calendar
++  /** VIIRS hotspots for each MODIS one in this place, when both were in orbit. */
++  ratio?: number | null
++}
++
++export interface GuideTopic {
++  id: string
++  question: string
++  answer: (c: GuideContext) => string
++}
++
++const WAIT = 'I am still loading the record of this place. Ask me again in a moment.'
++
++/**
++ * What the mascot can explain. Every answer is written here or read from the
++ * data on screen: nothing is generated, so nothing is made up.
++ */
++export const GUIDE_TOPICS: GuideTopic[] = [
++  {
++    id: 'here',
++    question: 'What is happening here?',
++    answer: ({ name, calendar }) => {
++      const cur = calendar?.current
++      if (!calendar || !cur) return WAIT
++      const usual =
++        cur.median !== null
++          ? ` The usual for a whole ${monthName(Number(cur.month.slice(5)))} is ${formatCount(cur.median)}.`
++          : ''
++      return `In ${name}, ${formatMonth(cur.month)} is ${statusMeta(cur.status).phrase}: ${formatCount(cur.hotspots)} hotspots${cur.incomplete ? ' so far' : ''}.${usual} I compare it with the same month of ${cur.years_compared} other years.`
++    },
++  },
++  {
++    id: 'season',
++    question: 'When does it burn here?',
++    answer: ({ name, calendar }) => {
++      if (!calendar) return WAIT
++      const top = peakShare(calendar, 3)
++      const months = top.months.map((m) => monthName(m)).join(', ')
++      return `In ${name} the usual peak is ${monthName(calendar.peak.month_of_year)}. The three busiest months (${months}) hold about ${Math.round(top.share)}% of a typical year. The record month was ${formatMonth(calendar.peak.record_month)} with ${formatCount(calendar.peak.record_hotspots)} hotspots, and the busiest year ${calendar.peak.busiest_year}.`
++    },
++  },
++  {
++    id: 'sensors',
++    question: 'Why do MODIS and VIIRS disagree?',
++    answer: ({ ratio }) =>
++      `MODIS sees the ground in 1 km pixels and VIIRS in 375 m pixels, so VIIRS catches small and cool fires that MODIS misses.${ratio ? ` Here VIIRS counted about ${formatCount(ratio)} hotspots for each one MODIS counted while both were in orbit.` : ''} Putting the raw counts side by side would look like fire jumped in 2012. We learn the relation in 2012 to 2017, check it on 2018 to mid 2021, and express the MODIS years on the VIIRS scale.`,
++  },
++  {
++    id: 'estimated',
++    question: 'What does “estimated” mean?',
++    answer: () =>
++      'Months before February 2012 have no VIIRS. Their value is what VIIRS would probably have counted, worked out from MODIS Aqua. Trust them for monthly patterns and for comparing years, not for one specific fire.',
++  },
++  {
++    id: 'hotspot',
++    question: 'Is a hotspot a fire?',
++    answer: () =>
++      'No. A hotspot is one satellite pixel that looked hot at one overpass. A big fire gives many hotspots over several days, and a small or short one may give none, or hide under cloud and smoke. So a month without hotspots is a month without detections, not proof of no fire, and hotspots are not burned area.',
++  },
++  {
++    id: 'frp',
++    question: 'What is FRP?',
++    answer: () =>
++      'Fire radiative power, in megawatts: the heat a detection was giving off when the satellite passed. It tells apart a smouldering field from a crown fire. We add it up over the detections of each month.',
++  },
++  {
++    id: 'daynight',
++    question: 'Why a day and a night mode?',
++    answer: () =>
++      'The satellites pass early in the afternoon and again at night. By day, sunlight and hot ground make small fires harder to tell apart, but that is when most fires burn. At night the background is cold, so small fires stand out, though many have died down. On the 375 m layer, day mode shows the day passes and night mode the night ones. The harmonized counts always include both.',
++  },
++  {
++    id: 'limits',
++    question: 'What can this not tell me?',
++    answer: () =>
++      'It is a historical record, not a forecast or an alert system. The latest months are provisional and the current month is incomplete. Each country has its own harmonization model, and those marked “review” passed our check less well. For decisions on the ground, use it with your own sources.',
++  },
++]
++
++/** How the mascot looks while answering. */
++export function guideMood(c: GuideContext): Mood {
++  return c.calendar?.current ? statusMeta(c.calendar.current.status).mood : 'curious'
++}
+diff --git a/frontend/src/lib/heat.test.ts b/frontend/src/lib/heat.test.ts
+index a206e59..80abad5 100644
+--- a/frontend/src/lib/heat.test.ts
++++ b/frontend/src/lib/heat.test.ts
+@@ -1,6 +1,6 @@
+ import { describe, expect, it } from 'vitest'
+ 
+-import { anomalyClass, heatColor, heatInk, heatSteps } from './heat'
++import { anomalyClass, heatColor, heatFor, heatInk, heatSteps } from './heat'
+ 
+ describe('heat', () => {
+   it('maps zero to the empty step and spreads classes over the six fire steps', () => {
+@@ -12,9 +12,10 @@ describe('heat', () => {
+     expect(heatColor(-1, 7)).toBe('transparent')
+   })
+ 
+-  it('writes dark numbers on bright cells and light numbers on dark ones', () => {
+-    expect(heatInk(6, 6)).toBe('var(--on-accent)')
+-    expect(heatInk(1, 6)).toBe('var(--bone)')
++  it('picks the ink of each half of the ramp', () => {
++    expect(heatInk(6, 6)).toBe('var(--heat-ink-hi)')
++    expect(heatInk(1, 6)).toBe('var(--heat-ink-lo)')
++    expect(heatInk(0, 6)).toBe('var(--bone)')
+   })
+ 
+   it('classifies a month against the same month of other years', () => {
+@@ -26,3 +27,11 @@ describe('heat', () => {
+     expect(anomalyClass(null)).toBe('no_history')
+   })
+ })
++
++describe('heatFor', () => {
++  it('only uses the six steps that exist', () => {
++    expect(heatFor(1000, 1000)).toBe('var(--heat-6)')
++    expect(heatFor(1, 1000)).toBe('var(--heat-1)')
++    expect(heatFor(0, 1000)).toBe('var(--heat-1)')
++  })
++})
+diff --git a/frontend/src/lib/heat.ts b/frontend/src/lib/heat.ts
+index 5eb98c3..70722b2 100644
+--- a/frontend/src/lib/heat.ts
++++ b/frontend/src/lib/heat.ts
+@@ -21,7 +21,10 @@ export function heatColor(cls: number, n: number): string {
+ 
+ /** Readable number color on a calendar cell. */
+ export function heatInk(cls: number, n: number): string {
+-  return step(cls, n) >= 4 ? 'var(--on-accent)' : 'var(--bone)'
++  const s = step(cls, n)
++  if (s === 0) return 'var(--bone)'
++  // the ramp runs dark to bright at night and pale to dark by day: the theme sets both inks
++  return s >= 4 ? 'var(--heat-ink-hi)' : 'var(--heat-ink-lo)'
+ }
+ 
+ /** A month's place among the same month of every year, as a status. */
+@@ -42,3 +45,9 @@ export const ANOMALY_COLOR: Record<Status, string> = {
+   much_below: 'var(--anom-much-below)',
+   no_history: 'var(--anom-none)',
+ }
++
++/** A map cell's colour: the six fire steps, by the square root of its share of the maximum. */
++export function heatFor(v: number, max: number): string {
++  const step = Math.min(6, Math.max(1, Math.ceil((Math.sqrt(v / max) || 0) * 6)))
++  return `var(--heat-${step})`
++}
+diff --git a/frontend/src/lib/mode.ts b/frontend/src/lib/mode.ts
+new file mode 100644
+index 0000000..456dda6
+--- /dev/null
++++ b/frontend/src/lib/mode.ts
+@@ -0,0 +1,49 @@
++/** Night is the dark interface, day the light one; the detail layer follows the same pass. */
++export type Mode = 'night' | 'day'
++
++const KEY = 'fire-atlas-mode'
++const listeners = new Set<() => void>()
++
++function read(): Mode {
++  try {
++    return localStorage.getItem(KEY) === 'day' ? 'day' : 'night'
++  } catch {
++    return 'night'
++  }
++}
++
++let mode: Mode = typeof window === 'undefined' ? 'night' : read()
++
++function apply() {
++  if (typeof document === 'undefined') return
++  const root = document.documentElement
++  root.classList.toggle('dark', mode === 'night')
++  root.classList.toggle('light', mode === 'day')
++}
++
++apply()
++
++export function getMode(): Mode {
++  return mode
++}
++
++export function setMode(next: Mode) {
++  mode = next
++  try {
++    localStorage.setItem(KEY, next)
++  } catch {
++    // private browsing: the choice lasts for this visit only
++  }
++  apply()
++  listeners.forEach((l) => l())
++}
++
++export function subscribeMode(listener: () => void): () => void {
++  listeners.add(listener)
++  return () => listeners.delete(listener)
++}
++
++/** The FIRMS `daynight` letter of the pass a mode stands for. */
++export function passOf(m: Mode): 'D' | 'N' {
++  return m === 'day' ? 'D' : 'N'
++}
+diff --git a/frontend/src/pages/compare-page.tsx b/frontend/src/pages/compare-page.tsx
+new file mode 100644
+index 0000000..ea3d193
+--- /dev/null
++++ b/frontend/src/pages/compare-page.tsx
+@@ -0,0 +1,226 @@
++import { lazy, Suspense, useId, useState } from 'react'
++import { Link, useLocation } from 'react-router'
++
++import { BigNumber, Card, Delta } from '@/components/card'
++import type { MapView } from '@/components/explore/area-map'
++import { MapLegend } from '@/components/map/map-legend'
++import { ErrorState, Skeleton } from '@/components/state'
++import { useExploreParams } from '@/hooks/use-explore-params'
++import { useCalendar, useFireMap } from '@/hooks/use-fire'
++import { ATTRIBUTION } from '@/lib/attribution'
++import { changePct, defaultPeriods, periodRange, periodTotal, type Unit } from '@/lib/compare'
++import { formatCount, formatMonth } from '@/lib/format'
++import { cn } from '@/lib/utils'
++
++const AreaMap = lazy(() =>
++  import('@/components/explore/area-map').then((m) => ({ default: m.AreaMap })),
++)
++
++const FIRST_MONTH = '2002-07'
++const FIRST_YEAR = 2002
++
++function label(period: string, unit: Unit): string {
++  return unit === 'year' ? period.slice(0, 4) : formatMonth(period)
++}
++
++function PeriodInput({
++  title,
++  unit,
++  value,
++  lastMonth,
++  onChange,
++}: {
++  title: string
++  unit: Unit
++  value: string
++  lastMonth: string
++  onChange: (v: string) => void
++}) {
++  const id = useId()
++  const field = 'bg-card-2 border-line rounded-md border px-2 py-1.5 font-mono text-[13px]'
++  const lastYear = Number(lastMonth.slice(0, 4))
++  return (
++    <div className="flex items-center gap-2">
++      <label htmlFor={id} className="text-[13px] font-semibold">
++        {title}
++      </label>
++      {unit === 'month' ? (
++        <input
++          id={id}
++          type="month"
++          value={value}
++          min={FIRST_MONTH}
++          max={lastMonth}
++          onChange={(e) => e.target.value && onChange(e.target.value)}
++          className={field}
++        />
++      ) : (
++        <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={field}>
++          {Array.from({ length: lastYear - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i).map((y) => (
++            <option key={y}>{y}</option>
++          ))}
++        </select>
++      )}
++    </div>
++  )
++}
++
++/** Time machine: the same place in two periods, on two maps that move together. */
++export function ComparePage() {
++  const [{ area, name }] = useExploreParams()
++  const { search } = useLocation()
++  const [unit, setUnit] = useState<Unit>('month')
++  const [picked, setPicked] = useState<{ a?: string; b?: string }>({})
++  const [view, setView] = useState<MapView | undefined>()
++  const calendar = useCalendar(area, {})
++  const cal = calendar.data?.calendar
++  const world = area.kind === 'world'
++  const resolution = world ? 1 : 0.25
++  const defaults = cal ? defaultPeriods(cal.data_until, unit) : null
++  const a = picked.a ?? defaults?.a
++  const b = picked.b ?? defaults?.b
++  const mapArea = world ? undefined : area
++  const fireA = useFireMap({ ...(a ? periodRange(a, unit) : {}), resolution, area: mapArea })
++  const fireB = useFireMap({ ...(b ? periodRange(b, unit) : {}), resolution, area: mapArea })
++  // one scale for both maps, or the colours could not be compared
++  const scaleMax = Math.max(fireA.data?.max_hotspots ?? 0, fireB.data?.max_hotspots ?? 0, 1)
++  const totalA = cal && a ? periodTotal(cal, a, unit) : null
++  const totalB = cal && b ? periodTotal(cal, b, unit) : null
++  const change = totalA && totalB ? changePct(totalA.hotspots, totalB.hotspots) : null
++
++  if (calendar.isError && !cal) {
++    return (
++      <div className="mx-auto max-w-[1100px] px-4 py-10">
++        <ErrorState error={calendar.error} onRetry={() => void calendar.refetch()} />
++      </div>
++    )
++  }
++
++  const sides = [
++    { key: 'A', period: a, fire: fireA.data, total: totalA },
++    { key: 'B', period: b, fire: fireB.data, total: totalB },
++  ] as const
++
++  return (
++    <div className="mx-auto max-w-[1720px] space-y-4 px-3 py-4 sm:px-5">
++      <div className="flex flex-wrap items-end justify-between gap-3">
++        <div>
++          <p className="eyebrow">Time machine</p>
++          <h1 className="mt-1 text-[26px] leading-tight font-bold tracking-tight sm:text-[32px]">
++            {name}, <span className="serif">then and now</span>
++          </h1>
++        </div>
++        <Link
++          to={{ pathname: '/', search }}
++          className="border-line rounded-full border px-4 py-2 text-[13px] font-semibold hover:bg-white/5"
++        >
++          Change the place on the dashboard
++        </Link>
++      </div>
++
++      <Card className="flex flex-wrap items-center gap-x-6 gap-y-3 p-4">
++        <div role="group" aria-label="Compare by" className="flex gap-1">
++          {(['month', 'year'] as const).map((u) => (
++            <button
++              key={u}
++              type="button"
++              aria-pressed={unit === u}
++              onClick={() => {
++                setUnit(u)
++                setPicked({})
++              }}
++              className={cn(
++                'border-line h-9 rounded-full border px-4 text-[13px] font-semibold capitalize',
++                unit === u ? 'border-saffron bg-saffron-soft text-saffron' : 'hover:bg-white/5',
++              )}
++            >
++              {u}
++            </button>
++          ))}
++        </div>
++        {cal && a && b ? (
++          <>
++            <PeriodInput
++              title="A"
++              unit={unit}
++              value={a}
++              lastMonth={cal.data_until.slice(0, 7)}
++              onChange={(v) => setPicked((p) => ({ ...p, a: v }))}
++            />
++            <PeriodInput
++              title="B"
++              unit={unit}
++              value={b}
++              lastMonth={cal.data_until.slice(0, 7)}
++              onChange={(v) => setPicked((p) => ({ ...p, b: v }))}
++            />
++          </>
++        ) : (
++          <Skeleton className="h-9 w-72" />
++        )}
++        {totalA && totalB && (
++          <p className="text-soft ml-auto flex items-center gap-2 text-[13px]">
++            B against A
++            {change !== null ? (
++              <Delta pct={change} className="text-[15px]" />
++            ) : (
++              <span className="text-mute">no fire in A to compare with</span>
++            )}
++          </p>
++        )}
++      </Card>
++
++      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
++        {sides.map((s) => (
++          <Card key={s.key} className="relative min-w-0 overflow-hidden">
++            <div className="border-line flex flex-wrap items-baseline gap-x-3 border-b px-4 py-2.5">
++              <p className="eyebrow">{s.key}</p>
++              <p className="text-[15px] font-semibold">{s.period ? label(s.period, unit) : '…'}</p>
++              {s.total && (
++                <BigNumber className="ml-auto text-[18px]">
++                  {formatCount(s.total.hotspots)}
++                  <span className="text-mute ml-1.5 text-[11px] font-normal">hotspots</span>
++                </BigNumber>
++              )}
++            </div>
++            <Suspense fallback={<Skeleton className="h-[52svh] min-h-[340px] rounded-none" />}>
++              <AreaMap
++                area={area}
++                layer="fire"
++                fire={s.fire}
++                scaleMax={scaleMax}
++                view={view}
++                onView={setView}
++                className="h-[52svh] min-h-[340px] w-full"
++              />
++            </Suspense>
++            {s.total && (s.total.estimated || s.total.incomplete) && (
++              <p className="bg-card-2 text-soft px-4 py-2 text-[12px]">
++                {s.total.estimated &&
++                  'Before February 2012: estimated from MODIS on the VIIRS scale, good for patterns, not for single fires. '}
++                {s.total.incomplete && 'This period is not complete yet.'}
++              </p>
++            )}
++          </Card>
++        ))}
++      </div>
++
++      <div className="flex flex-wrap items-start gap-4">
++        <MapLegend
++          layer="fire"
++          period="Same scale on both maps"
++          max={scaleMax}
++          cellDegrees={resolution}
++        />
++        <p className="text-soft max-w-2xl text-[13px] leading-relaxed">
++          Both maps count harmonized hotspots, so a year seen by MODIS and a year seen by VIIRS are
++          in the same unit. Drag or zoom one map and the other follows. Totals are for {name}; the
++          maps show the same place.
++        </p>
++      </div>
++      <footer className="border-line text-mute border-t pt-4 text-[11px] leading-relaxed">
++        {ATTRIBUTION}
++      </footer>
++    </div>
++  )
++}
+diff --git a/frontend/src/pages/dashboard-page.tsx b/frontend/src/pages/dashboard-page.tsx
+new file mode 100644
+index 0000000..e2803ae
+--- /dev/null
++++ b/frontend/src/pages/dashboard-page.tsx
+@@ -0,0 +1,364 @@
++import { ArrowRight, Moon, Sun, X } from 'lucide-react'
++import {
++  lazy,
++  Suspense,
++  useCallback,
++  useEffect,
++  useMemo,
++  useReducer,
++  useRef,
++  useState,
++} from 'react'
++import { Link, useLocation } from 'react-router'
++
++import type { Resolution } from '@/api/firemap'
++import { NormalChart } from '@/components/analysis/normal-chart'
++import { YearsRanking } from '@/components/analysis/years-ranking'
++import { Card } from '@/components/card'
++import { SensorsChart } from '@/components/charts/sensors-chart'
++import {
++  CoordsForm,
++  LayerPicker,
++  PanelSection,
++  ResolutionPicker,
++  SpectralPicker,
++} from '@/components/dashboard/controls'
++import { Kpis } from '@/components/dashboard/kpis'
++import { MiniCalendar } from '@/components/dashboard/mini-calendar'
++import type { MapLayer } from '@/components/explore/area-map'
++import { DrawTools } from '@/components/explore/draw-tools'
++import { PeriodPicker } from '@/components/explore/period-picker'
++import { PlacePicker } from '@/components/explore/place-picker'
++import { ExportPanel } from '@/components/export-panel'
++import { MapLegend } from '@/components/map/map-legend'
++import { ErrorState, Skeleton } from '@/components/state'
++import { useCountry } from '@/hooks/use-country'
++import { useExploreParams } from '@/hooks/use-explore-params'
++import {
++  useAnomalyMap,
++  useCalendar,
++  useCoverage,
++  useFireMap,
++  useHotspots,
++  useRegions,
++  useSensors,
++} from '@/hooks/use-fire'
++import { useMode } from '@/hooks/use-mode'
++import type { Area } from '@/lib/area'
++import { ATTRIBUTION } from '@/lib/attribution'
++import { DEFAULT_BASEMAP } from '@/lib/basemaps'
++import { countryAt } from '@/lib/country'
++import { detailDays, parseDetections } from '@/lib/detections'
++import { drawingReducer, initialDrawing } from '@/lib/drawing'
++import { TODAY } from '@/lib/export'
++import { formatCoords, formatCount, formatMonth } from '@/lib/format'
++import { passOf } from '@/lib/mode'
++
++const AreaMap = lazy(() =>
++  import('@/components/explore/area-map').then((m) => ({ default: m.AreaMap })),
++)
++
++const DRAWN_NAMES = {
++  polygon: 'Your shape',
++  bbox: 'Your rectangle',
++  point: 'Around your point',
++  world: 'The whole world',
++} as const
++
++/** The fire atlas: one place, one period, and every panel reading the same selection. */
++export function DashboardPage() {
++  const [{ area, name, from, to }, update] = useExploreParams()
++  const { search } = useLocation()
++  const [mode] = useMode()
++  const [layer, setLayer] = useState<MapLayer>('fire')
++  const [resolution, setResolution] = useState<Resolution>(0.25)
++  const [month, setMonth] = useState<string | null>(null)
++  const [basemap, setBasemap] = useState(DEFAULT_BASEMAP)
++  const [pickedDay, setPickedDay] = useState<string | null>(null)
++  const [radius, setRadius] = useState(25)
++  const [bothPasses, setBothPasses] = useState(false)
++  const [drawing, dispatch] = useReducer(drawingReducer, initialDrawing)
++  const lastPick = useRef(0)
++
++  const world = area.kind === 'world'
++  const range = useMemo(() => ({ from, to }), [from, to])
++  const regions = useRegions()
++  const coverage = useCoverage()
++  const calendar = useCalendar(area, range)
++  const sensors = useSensors(area, range)
++  const data = calendar.data
++  const cal = data?.calendar
++
++  // the whole world at 0.25° is too many cells to draw
++  const minResolution: Resolution = world ? 1 : 0.25
++  const cell = resolution < minResolution ? minResolution : resolution
++  const shown: MapLayer = world && layer === 'detections' ? 'fire' : layer
++  const mapMonth = month ?? cal?.data_until.slice(0, 7)
++  const mapArea = world ? undefined : area
++
++  const fire = useFireMap({ from: mapMonth, to: mapMonth, resolution: cell, area: mapArea })
++  const anomalies = useAnomalyMap(
++    { month: month ?? undefined, resolution: cell, area: mapArea },
++    shown === 'anomalies',
++  )
++  const days = cal && shown === 'detections' ? detailDays(month, cal.data_until) : null
++  const hotspots = useHotspots(area, days?.from, days?.to)
++  const pass = passOf(mode)
++  const detections = useMemo(() => {
++    const all = hotspots.data ? parseDetections(hotspots.data) : []
++    return bothPasses ? all : all.filter((d) => d.pass === pass)
++  }, [hotspots.data, bothPasses, pass])
++
++  const point = area.kind === 'point' ? { lat: area.lat, lon: area.lon } : null
++  const country = useCountry(point)
++
++  const pick = useCallback(
++    (lat: number, lon: number, km = radius) => {
++      const token = ++lastPick.current
++      const next: Area = { kind: 'point', lat, lon, radiusKm: km }
++      update({ area: next, name: `${km} km around ${formatCoords(lat, lon)}` })
++      // name the place after the country whose borders hold the point
++      void countryAt(lat, lon).then((c) => {
++        // the area goes again: this callback still holds the URL of before the tap
++        if (c && token === lastPick.current) {
++          update({ area: next, name: `${km} km around a point in ${c.name}` })
++        }
++      })
++    },
++    [radius, update],
++  )
++
++  useEffect(() => {
++    if (!drawing.done) return
++    if (drawing.done.kind === 'point') {
++      pick(drawing.done.lat, drawing.done.lon, drawing.done.radiusKm)
++    } else {
++      update({ area: drawing.done, name: DRAWN_NAMES[drawing.done.kind] })
++    }
++    dispatch({ type: 'consumed' })
++  }, [drawing.done, pick, update])
++
++  const imageryDay =
++    pickedDay ??
++    (cal ? (month && `${month}-15` < cal.data_until ? `${month}-15` : cal.data_until) : TODAY)
++
++  const period =
++    shown === 'detections' && days
++      ? `${days.from} to ${days.to}`
++      : mapMonth
++        ? formatMonth(mapMonth)
++        : undefined
++
++  return (
++    <div className="mx-auto max-w-[1720px] space-y-4 px-3 py-4 sm:px-5">
++      <h1 className="sr-only">Fire Atlas dashboard</h1>
++      <Kpis data={data} coverage={coverage.data} month={month} />
++
++      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[290px_minmax(0,1fr)] xl:grid-cols-[290px_minmax(0,1fr)_330px]">
++        {/* on a phone the map comes first */}
++        <Card className="order-2 min-w-0 p-4 lg:order-none">
++          <PanelSection title="Location">
++            <p className="mb-2 text-[15px] leading-tight font-semibold">{name}</p>
++            <PlacePicker regions={regions.data} onPick={(a, n) => update({ area: a, name: n })} />
++            <div className="mt-3">
++              <DrawTools drawing={drawing} dispatch={dispatch} />
++            </div>
++            <details className="mt-3">
++              <summary className="text-saffron cursor-pointer text-[12px]">
++                Enter coordinates
++              </summary>
++              <div className="mt-2">
++                <CoordsForm
++                  radiusKm={radius}
++                  onRadius={setRadius}
++                  onGo={(la, lo) => pick(la, lo)}
++                />
++              </div>
++            </details>
++            {!drawing.tool && (
++              <p className="text-mute mt-2 text-[11px]">
++                Or tap the map: you get the {radius} km around that point.
++              </p>
++            )}
++          </PanelSection>
++          <PanelSection title="Period">
++            <PeriodPicker
++              from={from}
++              to={to}
++              currentYear={Number((cal?.data_until ?? TODAY).slice(0, 4))}
++              onChange={(r) => update(r)}
++            />
++          </PanelSection>
++          <PanelSection title="Map layer">
++            <LayerPicker value={shown} onChange={setLayer} detailAvailable={!world} />
++          </PanelSection>
++          <PanelSection title="Resolution">
++            <ResolutionPicker value={cell} onChange={setResolution} min={minResolution} />
++            <p className="text-mute mt-2 text-[11px]">
++              The harmonized grid is 0.25° (about 25 km). For single pixels use the 375 m layer and
++              zoom in.
++            </p>
++          </PanelSection>
++          <PanelSection title="Spectral vision">
++            <SpectralPicker
++              value={basemap}
++              onChange={setBasemap}
++              day={imageryDay}
++              onDay={setPickedDay}
++              maxDay={cal?.data_until}
++            />
++          </PanelSection>
++        </Card>
++
++        <Card className="relative order-1 flex min-w-0 flex-col overflow-hidden lg:order-none">
++          <div className="border-line flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2.5 text-[12px]">
++            <p className="eyebrow">Interactive fire map</p>
++            {month && (
++              <button
++                type="button"
++                onClick={() => setMonth(null)}
++                className="bg-saffron-soft text-saffron flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold"
++              >
++                {formatMonth(month, 'short')} <X className="size-3" />
++                <span className="sr-only">Back to the latest month</span>
++              </button>
++            )}
++            {shown === 'detections' && (
++              <>
++                <span className="text-soft flex items-center gap-1.5">
++                  {mode === 'day' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
++                  {hotspots.isFetching
++                    ? 'Asking NASA FIRMS…'
++                    : `${formatCount(detections.length)} ${bothPasses ? '' : mode === 'day' ? 'day ' : 'night '}detections`}
++                </span>
++                <label className="text-soft flex cursor-pointer items-center gap-1.5">
++                  <input
++                    type="checkbox"
++                    checked={bothPasses}
++                    onChange={(e) => setBothPasses(e.target.checked)}
++                    className="accent-[var(--saffron)]"
++                  />
++                  day and night
++                </label>
++              </>
++            )}
++            {(fire.isFetching || anomalies.isFetching) && shown !== 'detections' && (
++              <span className="text-mute">Loading…</span>
++            )}
++          </div>
++          {shown === 'detections' && hotspots.isError && (
++            <p className="bg-card-2 text-soft px-4 py-2 text-[12px]">
++              NASA FIRMS did not answer, so the single detections cannot be drawn right now. The
++              harmonized layers still work.
++            </p>
++          )}
++          {/* the map fills the card, as tall as the panels beside it */}
++          <div className="relative min-h-[max(64svh,420px)] flex-1">
++            <Suspense fallback={<Skeleton className="absolute inset-0 rounded-none" />}>
++              <AreaMap
++                area={area}
++                drawing={drawing}
++                dispatch={dispatch}
++                layer={shown}
++                fire={fire.data}
++                anomalies={anomalies.data?.cells}
++                detections={detections}
++                basemap={basemap}
++                imageryDay={imageryDay}
++                onPick={pick}
++                className="absolute inset-0"
++              />
++            </Suspense>
++            <MapLegend
++              layer={shown}
++              period={period}
++              max={fire.data?.max_hotspots}
++              cellDegrees={cell}
++              className="absolute bottom-6 left-2 z-[450]"
++            />
++          </div>
++        </Card>
++
++        <div className="order-3 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 lg:order-none lg:col-span-2 xl:col-span-1 xl:grid-cols-1 xl:content-start">
++          <Card className="min-w-0 p-4">
++            <div className="mb-3 flex items-baseline justify-between gap-2">
++              <h2 className="eyebrow">Burning calendar</h2>
++              <Link
++                to={{ pathname: '/analysis', search, hash: '#calendar' }}
++                className="text-saffron flex items-center gap-1 text-[12px] font-semibold"
++              >
++                Full table <ArrowRight className="size-3" />
++              </Link>
++            </div>
++            {calendar.isError && !data ? (
++              <ErrorState error={calendar.error} onRetry={() => void calendar.refetch()} />
++            ) : cal ? (
++              <MiniCalendar calendar={cal} selected={month} onSelect={setMonth} />
++            ) : (
++              <Skeleton className="h-72" />
++            )}
++          </Card>
++          <Card className="min-w-0 p-4">
++            <h2 className="eyebrow mb-3">Download</h2>
++            {point && country.data?.outline && (
++              <button
++                type="button"
++                onClick={() =>
++                  update({ area: country.data!.outline!, name: `${country.data!.name} (mainland)` })
++                }
++                className="border-line mb-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-semibold hover:bg-white/5"
++              >
++                Analyse all of {country.data.name} <ArrowRight className="size-3.5" />
++              </button>
++            )}
++            <ExportPanel
++              key={`${name}-${cal?.data_until}`}
++              area={area}
++              name={name}
++              country={country.data}
++              dataUntil={cal?.data_until}
++              from={from}
++              to={to}
++            />
++          </Card>
++        </div>
++      </div>
++
++      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
++        <Card className="min-w-0 p-4 sm:p-5">
++          <h2 className="eyebrow mb-3">Is this normal?</h2>
++          {cal ? <NormalChart calendar={cal} /> : <Skeleton className="h-64" />}
++        </Card>
++        <Card className="min-w-0 p-4 sm:p-5">
++          <h2 className="eyebrow mb-3">Historical comparison</h2>
++          {cal ? <YearsRanking calendar={cal} /> : <Skeleton className="h-64" />}
++        </Card>
++        <Card className="min-w-0 p-4 sm:p-5">
++          <h2 className="eyebrow mb-3">Sensor comparison</h2>
++          {sensors.data ? <SensorsChart data={sensors.data} /> : <Skeleton className="h-64" />}
++          <Link
++            to={{ pathname: '/compare', search }}
++            className="text-saffron mt-3 inline-flex items-center gap-1 text-[12px] font-semibold"
++          >
++            Compare two periods on the map <ArrowRight className="size-3" />
++          </Link>
++        </Card>
++      </div>
++
++      {data && data.notes.length > 0 && (
++        <ul className="text-soft space-y-1 text-[12px] leading-relaxed" aria-label="Reading notes">
++          {data.notes.map((n) => (
++            <li key={n}>· {n}</li>
++          ))}
++          <li>
++            · Day and night mode filters the single detections only; the harmonized counts include
++            both passes.
++          </li>
++        </ul>
++      )}
++      <footer className="border-line text-mute border-t pt-4 text-[11px] leading-relaxed">
++        {ATTRIBUTION}
++      </footer>
++    </div>
++  )
++}
+diff --git a/frontend/src/pages/home-page.tsx b/frontend/src/pages/globe-page.tsx
+similarity index 89%
+rename from frontend/src/pages/home-page.tsx
+rename to frontend/src/pages/globe-page.tsx
+index e4218e9..07142e3 100644
+--- a/frontend/src/pages/home-page.tsx
++++ b/frontend/src/pages/globe-page.tsx
+@@ -1,4 +1,4 @@
+-import { ChevronRight, Flame, TriangleAlert } from 'lucide-react'
++import { ChevronRight, Flame, LayoutDashboard, TriangleAlert } from 'lucide-react'
+ import { lazy, Suspense, useMemo, useState } from 'react'
+ import { Link } from 'react-router'
+ 
+@@ -6,18 +6,18 @@ import { BigNumber, Card } from '@/components/card'
+ import type { GlobePin } from '@/components/globe/globe'
+ import { DropPanel } from '@/components/home/drop-panel'
+ import { MonthCards, ProgressRings, SeasonPulse } from '@/components/home/home-cards'
++import { GlobeLegend } from '@/components/map/map-legend'
+ import { ErrorState, Skeleton } from '@/components/state'
+ import { useAnomalyMap, useCalendar, useCoverage, useFireMap } from '@/hooks/use-fire'
+ import { WORLD } from '@/lib/area'
+ import { formatCount, formatMonth, formatSignedPct } from '@/lib/format'
++import { FIRE_COLORS } from '@/lib/globe'
+ import { yearSoFar } from '@/lib/insights'
+ 
+ const Globe = lazy(() => import('@/components/globe/globe').then((m) => ({ default: m.Globe })))
+ 
+-const PIN_COLORS = ['var(--garnet)', 'var(--coral)', 'var(--saffron)', 'var(--slate)']
+-
+ /** Global fire activity: the globe, and where to look first. */
+-export function HomePage() {
++export function GlobePage() {
+   const world = useCalendar(WORLD, {})
+   const coverage = useCoverage()
+   const month = (world.data?.calendar.data_until ?? coverage.data?.recent_last_day)?.slice(0, 7)
+@@ -35,11 +35,12 @@ export function HomePage() {
+       if (picked.every((p) => Math.hypot(p.lat - c.lat, p.lon - c.lon) > 25)) picked.push(c)
+       if (picked.length === 4) break
+     }
+-    return picked.map((c, i) => ({
++    return picked.map((c) => ({
+       id: `${c.lat},${c.lon}`,
+       lat: c.lat,
+       lon: c.lon,
+-      color: PIN_COLORS[i],
++      // one colour: every pin means the same thing
++      color: 'var(--coral)',
+       label: `Far above normal: about ${formatCount(c.projected)} hotspots this month${c.anomaly_pct !== null ? ` (${formatSignedPct(c.anomaly_pct)} vs usual)` : ''}. See this place.`,
+     }))
+   }, [anomalies.data])
+@@ -123,8 +124,19 @@ export function HomePage() {
+             />
+           </Suspense>
+           <p className="text-soft text-center text-[13px]">
+-            Tap a place on the globe, or a pin, to see its fire record. Drag to turn it.
++            Tap a place on the globe, or a pin, to see its fire record. Drag to turn it; scroll,
++            pinch or use the buttons to zoom.
+           </p>
++          <GlobeLegend
++            colors={FIRE_COLORS}
++            month={fire.data ? formatMonth(fire.data.from, 'short') : undefined}
++          />
++          <Link
++            to="/"
++            className="border-line flex h-9 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold hover:bg-white/5"
++          >
++            <LayoutDashboard className="size-4" /> Street-level zoom on the dashboard map
++          </Link>
+         </section>
+ 
+         <section aria-label="Fire season" className="min-w-0 lg:col-start-3 lg:row-start-1">

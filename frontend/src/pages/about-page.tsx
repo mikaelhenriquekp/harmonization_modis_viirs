@@ -4,14 +4,15 @@ import mascot from '@/assets/mascot.webp'
 import { ATTRIBUTION } from '@/lib/attribution'
 import { Section } from '@/components/state'
 import { useCoverage } from '@/hooks/use-fire'
+import { formatMonth } from '@/lib/format'
 
 const LIMITS = [
-  'Months up to January 2012 are an estimate of what VIIRS would have seen, rebuilt from MODIS Aqua. They are good for seasonal patterns and trends, not for single fires.',
-  'A month without hotspots means none were detected. Clouds, smoke, and small or short fires can hide fire from both satellites.',
-  'The last months come from near real time data and are provisional; the current month is incomplete and compared at its current pace.',
-  'Each country has its own model. Some are flagged for review (exam bias above ±10% or a weak monthly fit), and small countries use a model pooled with their neighbours. The Method page shows every country’s exam.',
-  'Areas are counted in 0.25° cells (about 25 km). A drawn shape keeps the cells whose center falls inside it; raw hotspot downloads are cut to the exact shape.',
-  'Terra is left out on purpose: Aqua passes in the early afternoon like VIIRS, so the two can be calibrated against each other. The record therefore starts in July 2002.',
+  'Months up to January 2012 are rebuilt from MODIS Aqua: an estimate of what VIIRS would have seen. Use them for seasons and trends, not single fires.',
+  'No hotspots means none were detected. Clouds, smoke and small or short fires can hide fire from both satellites.',
+  'Recent months are provisional, and the current month is compared at its pace so far.',
+  'Some country models are flagged for review (bias above ±10% or a weak monthly fit). Small countries share a model with neighbours. The Method page shows every exam.',
+  'Areas are counted in 0.25° cells (about 25 km): a drawn shape keeps the cells whose center falls inside it. Raw hotspot downloads follow the exact shape.',
+  'Terra is left out on purpose: only Aqua passes in the early afternoon like VIIRS, so the record starts in July 2002.',
 ]
 
 const TEAM = [
@@ -29,57 +30,59 @@ export function AboutPage() {
     <div className="mx-auto max-w-[960px] space-y-14 px-4 py-10 sm:px-8">
       <header className="grid items-center gap-6 sm:grid-cols-[1fr_auto]">
         <div>
-          <h1 className="text-[clamp(2rem,5vw,3.25rem)] leading-[1.05] font-semibold tracking-tight">
-            When and where fire burns
+          <h1 className="text-[38px] leading-[1.05] font-bold tracking-tight sm:text-[48px]">
+            Is this month&apos;s fire <span className="serif">normal</span>?
           </h1>
-          <p className="text-ink-2 mt-4 text-lg leading-relaxed">
-            Paparajote Lunar answers one question for any place on Earth: is the fire this month
-            normal? It turns twenty-four years of NASA satellite hotspots into one consistent
-            burning calendar, for emergency responders, land managers, firefighters and scientists.
+          <p className="text-soft mt-4 text-[16px] leading-relaxed">
+            Paparajote Lunar answers that for any place on Earth. It joins NASA&apos;s MODIS and
+            VIIRS fire hotspots since 2002 into one consistent burn calendar, for emergency teams,
+            land managers and scientists.
           </p>
         </div>
         <img
           src={mascot}
           alt="The Paparajote Lunar mascot, a paparajote in an astronaut suit"
-          className="mx-auto w-36 sm:w-44"
+          className="hidden w-36 sm:block"
         />
       </header>
 
       <Section id="data" title="What is in it">
-        <dl className="tabular grid gap-4 text-sm sm:grid-cols-3">
-          <div className="bg-card border-line rounded-[20px] border p-4">
+        <dl className="tabular grid gap-3 text-sm sm:grid-cols-3">
+          <div className="bg-card border-line rounded-[16px] border p-4">
             <dt className="text-muted-foreground">Record</dt>
             <dd className="num mt-1 font-mono text-lg font-semibold">
-              {c ? `${c.data_start} to ${c.recent_last_day ?? c.archive_end}` : '…'}
+              {c
+                ? `${formatMonth(c.data_start, 'short')} – ${formatMonth((c.recent_last_day ?? c.archive_end).slice(0, 7), 'short')}`
+                : '…'}
             </dd>
           </div>
-          <div className="bg-card border-line rounded-[20px] border p-4">
+          <div className="bg-card border-line rounded-[16px] border p-4">
             <dt className="text-muted-foreground">Countries harmonized</dt>
             <dd className="num mt-1 font-mono text-lg font-semibold">
               {c ? `${c.regions.harmonized} of ${c.regions.total}` : '…'}
             </dd>
           </div>
-          <div className="bg-card border-line rounded-[20px] border p-4">
+          <div className="bg-card border-line rounded-[16px] border p-4">
             <dt className="text-muted-foreground">Grid</dt>
             <dd className="num mt-1 font-mono text-lg font-semibold">
-              {c ? `${c.cell_degrees}° cells` : '…'}
+              {c ? `${c.cell_degrees}° (~25 km)` : '…'}
             </dd>
           </div>
         </dl>
         <p className="text-muted-foreground mt-4 text-sm">
-          Updated every six hours. Developers can use the same data through the{' '}
+          Updated every six hours. The same data is in the{' '}
           <a href="/api/openapi.yaml" className="text-saffron underline underline-offset-4">
             open API
           </a>
-          ; see how it is built on the{' '}
-          <Link to="/validation" className="text-saffron underline underline-offset-4">
-            Validation
+          , and the{' '}
+          <Link to="/method" className="text-saffron underline underline-offset-4">
+            Method
           </Link>{' '}
-          page.
+          page shows how it is built.
         </p>
       </Section>
 
-      <Section id="limits" title="What to keep in mind">
+      <Section id="limits" title="Limits">
         <ul className="text-ink-2 list-disc space-y-2 pl-5 text-sm leading-relaxed">
           {LIMITS.map((l) => (
             <li key={l}>{l}</li>
@@ -97,11 +100,11 @@ export function AboutPage() {
         </ul>
       </Section>
 
-      <Section id="team" title="Team Paparajote Lunar">
+      <Section id="team" title="Team">
         <p className="text-ink-2 text-sm leading-relaxed">
-          Built for the NASA Space Apps Challenge 2026, challenge “Harmonization of MODIS and VIIRS
-          Hot Spots”, from Murcia, home of the paparajote. The harmonization method comes from the
-          study by Alexis Rodriguez and Basma Barhel.
+          Built in Murcia, home of the paparajote, for the NASA Space Apps Challenge 2026
+          (“Harmonization of MODIS and VIIRS Hot Spots”). The method comes from the study by Alexis
+          Rodriguez and Basma Barhel.
         </p>
         <ul className="mt-3 flex flex-wrap gap-2 text-sm">
           {TEAM.map((t) => (

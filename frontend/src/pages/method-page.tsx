@@ -1,4 +1,5 @@
-import { useSearchParams } from 'react-router'
+import { useRef } from 'react'
+import { Link, useSearchParams } from 'react-router'
 
 import { Card } from '@/components/card'
 import { Mascot } from '@/components/mascot'
@@ -10,27 +11,24 @@ import { useRegion, useRegions } from '@/hooks/use-fire'
 const STEPS = [
   [
     'Download',
-    'Every FIRMS country file since 2002: MODIS Aqua, Suomi NPP and NOAA-20, plus the recent days from the area API, refreshed every six hours.',
+    'Every FIRMS fire file since 2002 for MODIS Aqua, Suomi NPP and NOAA-20, refreshed every six hours.',
   ],
   [
     'Clean',
-    'Vegetation fires only, enough confidence, Aqua for MODIS (its afternoon pass matches VIIRS), counted per 0.25° cell and month.',
+    'Keep confident vegetation fires, counted per 0.25° cell and month. MODIS means Aqua, whose afternoon pass matches VIIRS.',
   ],
   [
     'Learn',
-    'Where both satellites flew (2012–2017), seven models learn how many hotspots VIIRS sees for each one MODIS sees.',
+    'On 2012–2017, when both flew, seven models learn how many VIIRS hotspots match each MODIS one.',
   ],
-  [
-    'Grade',
-    'Each model predicts 2018 to mid-2021 without looking; the lowest error within ±10% bias wins, country by country.',
-  ],
+  ['Grade', 'Each model predicts 2018 to mid-2021 blind. The lowest error within ±10% bias wins.'],
   [
     'Rebuild',
-    'The winner turns 2002–2012 MODIS into the VIIRS scale; countries with little fire borrow a model pooled with their neighbours.',
+    'The winner turns 2002–2012 MODIS into VIIRS units. Countries with little fire share a model with neighbours.',
   ],
   [
     'Join',
-    'One source per month, never added together: rebuilt MODIS to January 2012, Suomi NPP after, NOAA-20 since November 2026.',
+    'One satellite per month, never added: rebuilt MODIS to January 2012, Suomi NPP after, NOAA-20 since November 2026.',
   ],
 ]
 
@@ -40,38 +38,35 @@ export function MethodPage() {
   const regions = useRegions()
   const selected = params.get('region') ?? 'Spain'
   const region = useRegion(selected)
+  const exam = useRef<HTMLDivElement>(null)
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-20 px-4 py-10 sm:px-8">
+    <div className="mx-auto max-w-[1400px] space-y-16 px-4 py-10 sm:px-8">
       <header className="grid items-center gap-6 sm:grid-cols-[1fr_auto]">
-        <div className="max-w-3xl">
-          <p className="eyebrow">Methodology</p>
-          <h1 className="mt-2 text-[38px] leading-[1.05] font-bold tracking-tight sm:text-[48px]">
-            Two satellites, <span className="serif">one</span> record
+        <div className="max-w-2xl">
+          <h1 className="text-[38px] leading-[1.05] font-bold tracking-tight sm:text-[48px]">
+            How the record is <span className="serif">built</span>
           </h1>
           <p className="text-soft mt-4 text-[16px] leading-relaxed">
-            Put side by side, the switch from MODIS to VIIRS in 2012 looks like an explosion of fire
-            that never happened: VIIRS sees several times more small fires. Each country gets its
-            own model, an exam it cannot cheat on, and a record in one single unit.
+            VIIRS sees several times more small fires than MODIS, so a plain join makes 2012 look
+            like an explosion of fire that never happened. Each country gets its own conversion
+            model, tested on years it never saw.
           </p>
         </div>
-        <Mascot mood="calm" label="The mascot looks calm" className="mx-auto w-32 sm:w-40" />
+        <Mascot mood="calm" label="The mascot looks calm" className="hidden w-36 sm:block" />
       </header>
 
-      <section aria-labelledby="steps-title">
-        <h2 id="steps-title" className="mb-6 text-[28px] font-bold tracking-tight">
-          How the record is <span className="serif">harmonized</span>
-        </h2>
-        <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section aria-label="Steps">
+        <ol className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
           {STEPS.map(([title, text], i) => (
-            <li key={title}>
-              <Card className="h-full p-5">
-                <p className="text-saffron num font-mono text-[13px] font-semibold">
-                  {String(i + 1).padStart(2, '0')}
-                </p>
-                <p className="mt-1 text-[17px] font-semibold">{title}</p>
-                <p className="text-soft mt-1 text-[14px] leading-relaxed">{text}</p>
-              </Card>
+            <li key={title} className="border-line border-t pt-4">
+              <p className="flex items-baseline gap-3">
+                <span className="text-saffron num font-mono text-[13px] font-semibold">
+                  {i + 1}
+                </span>
+                <span className="text-[17px] font-semibold">{title}</span>
+              </p>
+              <p className="text-soft mt-2 text-[14px] leading-relaxed">{text}</p>
             </li>
           ))}
         </ol>
@@ -79,23 +74,22 @@ export function MethodPage() {
 
       <section aria-labelledby="countries-title">
         <h2 id="countries-title" className="text-[28px] font-bold tracking-tight">
-          Every country, <span className="serif">graded</span>
+          Every country&apos;s <span className="serif">exam</span>
         </h2>
         <p className="text-soft mt-2 mb-6 max-w-2xl text-[14px]">
-          Pick a country to see how every model scored on the exam and how the 2012 switch looks
-          before and after.
+          Pick a country to see how each model scored and which one was chosen.
         </p>
         {regions.isError ? (
           <ErrorState error={regions.error} onRetry={() => void regions.refetch()} />
         ) : !regions.data ? (
           <Loading label="Loading countries" />
         ) : (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
             <Card className="p-4 sm:p-5">
               <RegionsTable
                 regions={regions.data}
                 selected={selected}
-                onSelect={(id) =>
+                onSelect={(id) => {
                   setParams(
                     (p) => {
                       const next = new URLSearchParams(p)
@@ -104,10 +98,13 @@ export function MethodPage() {
                     },
                     { replace: true },
                   )
-                }
+                  // on one column the exam sits below the list: bring it into view
+                  if (window.matchMedia?.('(max-width: 1023px)').matches)
+                    exam.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
               />
             </Card>
-            <Card className="min-w-0 p-4 sm:p-6">
+            <Card ref={exam} className="min-w-0 scroll-mt-4 p-4 sm:p-6">
               {region.isError ? (
                 <ErrorState error={region.error} />
               ) : region.data ? (
@@ -119,6 +116,14 @@ export function MethodPage() {
           </div>
         )}
       </section>
+
+      <p className="text-soft border-line border-t pt-6 text-[14px]">
+        Limits, sources and the team are on the{' '}
+        <Link to="/about" className="text-saffron underline underline-offset-4">
+          About
+        </Link>{' '}
+        page.
+      </p>
     </div>
   )
 }

@@ -140,7 +140,7 @@ describe('RegionExam', () => {
 
   it('explains a pooled country', () => {
     render(<RegionExam region={{ ...detail, ...regions[2] }} />)
-    expect(screen.getByText(/pooled with Spain/i)).toBeInTheDocument()
+    expect(screen.getByText(/shares one with Spain/i)).toBeInTheDocument()
   })
 
   it('explains a country without a model', () => {

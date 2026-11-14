@@ -49,24 +49,11 @@ export function ErrorState({
           <button
             type="button"
             onClick={onRetry}
-            className="text-gold-ink mt-2 font-medium underline underline-offset-4"
+            className="text-saffron mt-2 font-medium underline underline-offset-4"
           >
             Try again
           </button>
         )}
-      </div>
-    </div>
-  )
-}
-
-/** Nothing to show yet, and what to do about it. */
-export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
-  return (
-    <div className="flex items-start gap-4 py-6">
-      <Mascot mood="curious" label="The mascot is curious" className="size-14 shrink-0" />
-      <div className="text-sm">
-        <p className="font-medium">{title}</p>
-        {children && <div className="text-muted-foreground mt-1">{children}</div>}
       </div>
     </div>
   )

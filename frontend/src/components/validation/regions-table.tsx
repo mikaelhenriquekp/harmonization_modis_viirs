@@ -73,20 +73,20 @@ export function RegionsTable({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search countries"
-          className="border-line bg-surface ml-auto h-8 rounded-full border px-3 text-sm"
+          className="border-line bg-surface h-9 w-full rounded-full border px-4 text-sm sm:ml-auto sm:w-56"
         />
       </div>
-      <div className="border-line max-h-[520px] overflow-auto rounded-xl border">
-        <table className="w-full text-left text-sm">
+      <div className="border-line max-h-[70svh] overflow-auto rounded-xl border">
+        <table className="w-full text-left text-sm sm:min-w-[480px]">
           <thead className="bg-surface text-muted-foreground sticky top-0 text-xs">
             <tr>
               <th scope="col" className="px-3 py-2 font-medium">
                 Country
               </th>
-              <th scope="col" className="px-3 py-2 font-medium">
+              <th scope="col" className="hidden px-3 py-2 font-medium sm:table-cell">
                 Model
               </th>
-              <th scope="col" className="hidden px-3 py-2 font-medium sm:table-cell">
+              <th scope="col" className="hidden px-3 py-2 font-medium xl:table-cell">
                 Learned from
               </th>
               <th scope="col" className="px-3 py-2 font-medium">
@@ -104,22 +104,28 @@ export function RegionsTable({
                   <button
                     type="button"
                     onClick={() => onSelect(r.id)}
-                    className="hover:text-gold-ink text-left underline-offset-4 hover:underline"
+                    className="hover:text-saffron text-left underline-offset-4 hover:underline"
                   >
                     {r.name}
                   </button>
                 </th>
-                <td className="px-3 py-1.5">
-                  {r.model ? `${r.model} · ${r.model_name ?? ''}` : '–'}
+                <td className="hidden px-3 py-1.5 sm:table-cell" title={r.model_name ?? undefined}>
+                  {r.model ? (
+                    <>
+                      <span className="text-mute font-mono">{r.model}</span> {r.model_name ?? ''}
+                    </>
+                  ) : (
+                    '–'
+                  )}
                 </td>
-                <td className="text-muted-foreground hidden px-3 py-1.5 sm:table-cell">
+                <td className="text-muted-foreground hidden px-3 py-1.5 xl:table-cell">
                   {r.scope === 'regional'
-                    ? `With ${r.pooled_with.join(', ')}`
+                    ? `With ${r.pooled_with.map((p) => p.replaceAll('_', ' ')).join(', ')}`
                     : r.status === 'ok'
                       ? 'Its own fire'
                       : '–'}
                 </td>
-                <td className="px-3 py-1.5">
+                <td className="px-3 py-1.5 whitespace-nowrap">
                   <span className="inline-flex items-center gap-1.5">
                     <span
                       aria-hidden

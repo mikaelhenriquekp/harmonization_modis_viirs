@@ -55,7 +55,7 @@ export function NormalChart({ calendar }: { calendar: Calendar }) {
             {cur && meta ? `${formatMonth(cur.month)} ${meta.phrase}` : 'The usual season'}
           </h3>
           <p className="text-soft mt-1 text-[13px]">
-            Usual range (middle half of past years), median and selected year
+            The band is the middle half of past years; the bar, the median.
           </p>
         </div>
         <label
@@ -159,24 +159,31 @@ export function NormalChart({ calendar }: { calendar: Calendar }) {
               <circle cx={x(curMonth)} cy={y(cur.projected)} r={4} fill="var(--saffron)" />
             </>
           )}
-          {callout && callout.ratio >= 1.5 && (
-            <g>
-              <line
-                x1={x(callout.m)}
-                y1={y(callout.v)}
-                x2={x(callout.m) + 14}
-                y2={y(callout.v) - 22}
-                stroke="var(--soft)"
-              />
-              <text
-                x={x(callout.m) + 16}
-                y={y(callout.v) - 26}
-                className="fill-[var(--bone)] font-mono text-[11px]"
-              >
-                {monthName(callout.m, 'short')}: {callout.ratio.toFixed(1)}× usual
-              </text>
-            </g>
-          )}
+          {callout &&
+            callout.ratio >= 1.5 &&
+            (() => {
+              const flip = x(callout.m) + 130 > width
+              const dx = flip ? -14 : 14
+              return (
+                <g>
+                  <line
+                    x1={x(callout.m)}
+                    y1={y(callout.v)}
+                    x2={x(callout.m) + dx}
+                    y2={y(callout.v) - 22}
+                    stroke="var(--soft)"
+                  />
+                  <text
+                    x={x(callout.m) + dx + (flip ? -2 : 2)}
+                    y={y(callout.v) - 26}
+                    textAnchor={flip ? 'end' : 'start'}
+                    className="fill-[var(--bone)] font-mono text-[11px]"
+                  >
+                    {monthName(callout.m, 'short')}: {callout.ratio.toFixed(1)}× usual
+                  </text>
+                </g>
+              )
+            })()}
           {Array.from({ length: 12 }, (_, i) => (
             <rect
               key={i}
@@ -226,7 +233,7 @@ export function NormalChart({ calendar }: { calendar: Calendar }) {
             )}
           </>
         ) : (
-          <span className="text-mute">Hover or focus a month for its numbers.</span>
+          <span className="text-mute">Point at a month for its numbers.</span>
         )}
       </ChartTooltip>
     </div>

@@ -57,10 +57,7 @@ export function AreaEditor({ open, area, onClose, onChange }: AreaEditorProps) {
       {open && (
         <div className="flex max-h-[90svh] flex-col gap-4 overflow-y-auto p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="eyebrow">Area of interest</p>
-              <h2 className="text-xl font-semibold">Pick a place or draw your own</h2>
-            </div>
+            <h2 className="text-xl font-semibold">Change the area</h2>
             <button
               type="button"
               onClick={onClose}
@@ -70,13 +67,15 @@ export function AreaEditor({ open, area, onClose, onChange }: AreaEditorProps) {
               <X className="size-5" />
             </button>
           </div>
-          <PlacePicker
-            regions={regions.data}
-            onPick={(a, n) => {
-              onChange(a, n)
-              onClose()
-            }}
-          />
+          {!drawing.tool && (
+            <PlacePicker
+              regions={regions.data}
+              onPick={(a, n) => {
+                onChange(a, n)
+                onClose()
+              }}
+            />
+          )}
           <DrawTools drawing={drawing} dispatch={dispatch} />
           <div className="border-line overflow-hidden rounded-[16px] border">
             <Suspense fallback={<Skeleton className="h-[52svh] rounded-none" />}>

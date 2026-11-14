@@ -65,8 +65,3 @@ export function Ring({ share, color, label }: { share: number; color: string; la
     </svg>
   )
 }
-
-/** Mono uppercase label above a title, as in the wireframe ("02 / BURN ACTIVITY CALENDAR"). */
-export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cn('eyebrow', className)}>{children}</p>
-}

@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 
@@ -10,59 +11,28 @@ import { Satellites } from '@/components/analysis/satellites'
 import { TopBar } from '@/components/analysis/top-bar'
 import { YearsRanking } from '@/components/analysis/years-ranking'
 import { Card } from '@/components/card'
-import { Mascot } from '@/components/mascot'
 import { ErrorState, Skeleton } from '@/components/state'
 import { useExploreParams } from '@/hooks/use-explore-params'
 import { useCalendar, useRegion, useSensors } from '@/hooks/use-fire'
-import { statusMeta } from '@/lib/status'
-
-const WORDS = [
-  'Zero',
-  'One',
-  'Two',
-  'Three',
-  'Four',
-  'Five',
-  'Six',
-  'Seven',
-  'Eight',
-  'Nine',
-  'Ten',
-  'Eleven',
-  'Twelve',
-  'Thirteen',
-  'Fourteen',
-  'Fifteen',
-  'Sixteen',
-  'Seventeen',
-  'Eighteen',
-  'Nineteen',
-  'Twenty',
-]
-
-function yearsInWords(n: number): string {
-  if (n <= 20) return WORDS[n]
-  const tens = ['', '', 'Twenty', 'Thirty']
-  const t = Math.floor(n / 10)
-  return n % 10 === 0 ? tens[t] : `${tens[t]}-${WORDS[n % 10].toLowerCase()}`
-}
 
 function Heading({
-  eyebrow,
+  id,
   children,
+  description,
   actions,
 }: {
-  eyebrow: string
+  id: string
   children: ReactNode
+  description?: ReactNode
   actions?: ReactNode
 }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className="eyebrow">{eyebrow}</p>
-        <h2 className="mt-2 text-[34px] leading-[1.05] font-bold tracking-tight sm:text-[40px]">
+        <h2 id={id} className="text-[28px] leading-[1.1] font-bold tracking-tight sm:text-[32px]">
           {children}
         </h2>
+        {description && <p className="text-soft mt-2 max-w-2xl text-[14px]">{description}</p>}
       </div>
       {actions}
     </div>
@@ -80,7 +50,6 @@ export function AnalysisPage() {
   const cal = data?.calendar
   const main = data?.regions.find((r) => r.status === 'ok')
   const region = useRegion(main?.id)
-  const meta = cal?.current ? statusMeta(cal.current.status) : null
 
   return (
     <div>
@@ -118,11 +87,11 @@ export function AnalysisPage() {
         ) : (
           <>
             <section id="calendar" className="scroll-mt-24" aria-labelledby="calendar-title">
-              <Heading eyebrow="02 / Burn activity calendar">
-                <span id="calendar-title">
-                  {yearsInWords(cal.grid.years.length)} years of fire,{' '}
-                  <span className="serif">month by month</span>
-                </span>
+              <Heading
+                id="calendar-title"
+                description={`Harmonized hotspots per month, ${cal.grid.years[0]} to ${cal.grid.years.at(-1)}. Newest year on top.`}
+              >
+                Burn calendar
               </Heading>
               <Card className={`p-4 sm:p-6 ${calendar.isFetching ? 'opacity-70' : ''}`}>
                 <CalendarTable calendar={cal} />
@@ -131,33 +100,10 @@ export function AnalysisPage() {
 
             <section id="anomalies" className="scroll-mt-24" aria-labelledby="anomalies-title">
               <Heading
-                eyebrow="03 / Historical comparison"
-                actions={
-                  meta && (
-                    <div className="flex items-center gap-3">
-                      <Mascot
-                        mood={meta.mood}
-                        label={`The mascot looks ${meta.mood}`}
-                        className="w-16"
-                      />
-                      <p className="text-soft max-w-[16rem] text-[13px] leading-snug">
-                        {meta.mood === 'alarmed'
-                          ? 'This month is burning much more than usual here.'
-                          : meta.mood === 'worried'
-                            ? 'More fire than usual here.'
-                            : meta.mood === 'happy'
-                              ? 'Less fire than usual here.'
-                              : meta.mood === 'calm'
-                                ? 'Business as usual here.'
-                                : 'Not enough history to compare.'}
-                      </p>
-                    </div>
-                  )
-                }
+                id="anomalies-title"
+                description="Each month against the same month in every other year of the record."
               >
-                <span id="anomalies-title">
-                  Is this <span className="serif">normal</span>?
-                </span>
+                Is this <span className="serif">normal</span>?
               </Heading>
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
                 <Card className="min-w-0 p-5 sm:p-6">
@@ -169,37 +115,36 @@ export function AnalysisPage() {
               </div>
             </section>
 
-            <section id="sensors" className="scroll-mt-24" aria-label="Two satellites, one record">
+            <section id="sensors" className="scroll-mt-24" aria-labelledby="sensors-title">
               <Satellites
                 sensors={sensors.data}
-                region={region.data}
+                region={area.kind === 'world' ? undefined : region.data}
                 lastYear={cal.grid.years.at(-1)!}
               />
             </section>
 
             <section id="downloads" className="scroll-mt-24" aria-labelledby="downloads-title">
-              <Heading eyebrow="05 / Downloads">
-                <span id="downloads-title">
-                  Take the <span className="serif">analysis</span> with you
-                </span>
-              </Heading>
+              <Heading id="downloads-title">Downloads</Heading>
               <Downloads
                 key={cal.data_until}
                 area={area}
                 range={range}
-                name={name}
                 dataUntil={cal.data_until}
               />
             </section>
 
             {data.notes.length > 0 && (
-              <section aria-label="Reading these numbers">
-                <ul className="text-soft space-y-2 text-[13px] leading-relaxed">
+              <details className="group text-[13px]">
+                <summary className="text-soft hover:text-bone flex cursor-pointer list-none items-center gap-2 font-semibold [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="size-4 transition-transform group-open:rotate-90" />
+                  Notes on these numbers ({data.notes.length})
+                </summary>
+                <ul className="text-soft mt-3 max-w-4xl list-disc space-y-2 pl-10 leading-relaxed">
                   {data.notes.map((n) => (
-                    <li key={n}>· {n}</li>
+                    <li key={n}>{n.replaceAll('_', ' ')}</li>
                   ))}
                 </ul>
-              </section>
+              </details>
             )}
           </>
         )}
@@ -208,10 +153,10 @@ export function AnalysisPage() {
           <p className="max-w-3xl leading-relaxed">{ATTRIBUTION}</p>
           <nav aria-label="More" className="flex gap-4">
             <Link to="/method" className="hover:text-bone underline underline-offset-4">
-              Methodology
+              Method
             </Link>
             <Link to="/about" className="hover:text-bone underline underline-offset-4">
-              Limitations
+              About the data
             </Link>
             <a href="/api/openapi.yaml" className="hover:text-bone underline underline-offset-4">
               Open API

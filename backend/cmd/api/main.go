@@ -13,9 +13,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nasa-challenge/app/backend/api"
 	"github.com/nasa-challenge/app/backend/internal/calendar"
 	"github.com/nasa-challenge/app/backend/internal/config"
 	"github.com/nasa-challenge/app/backend/internal/database"
+	"github.com/nasa-challenge/app/backend/internal/docs"
 	"github.com/nasa-challenge/app/backend/internal/firemap"
 	"github.com/nasa-challenge/app/backend/internal/firms"
 	"github.com/nasa-challenge/app/backend/internal/health"
@@ -68,8 +70,9 @@ func run() error {
 	}
 
 	srv := &http.Server{
-		Addr:              net.JoinHostPort("", cfg.Port),
-		Handler:           server.NewRouter(log, healthHandler, calendarHandler, regionsHandler, mapHandler, hotspotsHandler),
+		Addr: net.JoinHostPort("", cfg.Port),
+		Handler: server.NewRouter(log, healthHandler, calendarHandler, regionsHandler, mapHandler, hotspotsHandler,
+			docs.NewHandler(api.OpenAPI)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      60 * time.Second,

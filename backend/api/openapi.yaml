@@ -1,0 +1,807 @@
+openapi: 3.1.0
+info:
+  title: Paparajote Lunar API
+  version: 1.0.0
+  summary: Harmonized MODIS and VIIRS active fire hotspots and a burning activity calendar.
+  description: |
+    NASA FIRMS active fire hotspots from MODIS (Aqua) and VIIRS (Suomi NPP, NOAA-20), harmonized into one
+    consistent monthly series on a 0.25° grid from July 2002 to today, so the sensor no longer matters.
+
+    **How the series is built**
+    - 2002-07 → 2012-01: MODIS Aqua, converted to what VIIRS would have seen with each country's own model
+      (learned on 2012–2017, graded on 2018 to mid-2021). These months are flagged `estimated`.
+    - 2012-02 → end of the yearly archive: Suomi NPP VIIRS (375 m).
+    - After the archive: global VIIRS from the FIRMS area API, Suomi NPP until 2026-11-01 and NOAA-20 from
+      2026-11-02. Near real time days are flagged `provisional`.
+    - Each month comes from exactly one source; satellites are never added together.
+    - Countries with too little fire to learn a model of their own are harmonized with a regional model
+      pooled with their nearest neighbors (`scope: regional`).
+
+    **Areas of interest.** Every data endpoint takes the same area parameters: `bbox`, or `lat` + `lon`
+    (+ `radius_km`), or nothing for the whole world. The area is snapped to the 0.25° cells it intersects;
+    the response says which cells were used (`grid_bbox`).
+
+    **Attribution.** We acknowledge the use of data and/or imagery from NASA's Fire Information for Resource
+    Management System (FIRMS) (https://earthdata.nasa.gov/firms), part of NASA's Land, Atmosphere Near
+    real-time Capability for Earth observations (LANCE) (https://earthdata.nasa.gov/lance) and NASA's Earth
+    Science Data and Information System (ESDIS).
+  license:
+    name: NASA FIRMS data use
+    url: https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-information-guidance
+servers:
+  - url: https://paparajotelunar.com
+    description: Production
+  - url: http://localhost:8080
+    description: Local development
+security: []  # public, read-only API: no authentication
+tags:
+  - name: calendar
+    description: Burning activity calendar of an area.
+  - name: map
+    description: Harmonized hotspots on a grid.
+  - name: hotspots
+    description: Raw detections, downloaded from FIRMS on demand.
+  - name: regions
+    description: Harmonized countries, their models and the data coverage.
+  - name: system
+    description: Health and documentation.
+
+paths:
+  /api/calendar:
+    get:
+      tags: [calendar]
+      operationId: getCalendar
+      summary: Burning activity calendar of an area
+      description: |
+        Monthly harmonized hotspots of the area between `from` and `to`, with every month's historical median
+        and anomaly, a year × month grid with accessible color classes, the climatology of each month of the
+        year, years ranked by hotspots and how the last month compares with the same month of past years.
+
+        The last month with data may be incomplete: it is then compared at its current pace
+        (`projected` = hotspots so far / elapsed fraction of the month). Results are cached for 10 minutes.
+      parameters:
+        - $ref: '#/components/parameters/BBox'
+        - $ref: '#/components/parameters/Lat'
+        - $ref: '#/components/parameters/Lon'
+        - $ref: '#/components/parameters/RadiusKm'
+        - $ref: '#/components/parameters/FromMonth'
+        - $ref: '#/components/parameters/ToMonth'
+      responses:
+        '200':
+          description: The calendar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CalendarResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/calendar.csv:
+    get:
+      tags: [calendar]
+      operationId: getCalendarCsv
+      summary: The calendar of an area as CSV
+      description: One row per month, the same values as `months` in `/api/calendar`.
+      parameters:
+        - $ref: '#/components/parameters/BBox'
+        - $ref: '#/components/parameters/Lat'
+        - $ref: '#/components/parameters/Lon'
+        - $ref: '#/components/parameters/RadiusKm'
+        - $ref: '#/components/parameters/FromMonth'
+        - $ref: '#/components/parameters/ToMonth'
+      responses:
+        '200':
+          description: |
+            `attachment; filename="burning-calendar_{from}_{to}.csv"`. Columns: month, hotspots, frp_mw, source,
+            estimated, provisional, incomplete, median_same_month, anomaly_pct, percentile.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            text/csv:
+              schema: { type: string }
+              example: |
+                month,hotspots,frp_mw,source,estimated,provisional,incomplete,median_same_month,anomaly_pct,percentile
+                2017-07,242,5310.2,viirs_snpp,false,false,false,37,554.05,1
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/sensors:
+    get:
+      tags: [calendar]
+      operationId: getSensors
+      summary: Raw sensors next to the harmonized series
+      description: |
+        Monthly raw counts of MODIS Aqua, Suomi NPP and NOAA-20 in the area, next to the harmonized series.
+        Shows why the record needs harmonizing: VIIRS sees several times more hotspots than MODIS.
+      parameters:
+        - $ref: '#/components/parameters/BBox'
+        - $ref: '#/components/parameters/Lat'
+        - $ref: '#/components/parameters/Lon'
+        - $ref: '#/components/parameters/RadiusKm'
+        - $ref: '#/components/parameters/FromMonth'
+        - $ref: '#/components/parameters/ToMonth'
+      responses:
+        '200':
+          description: The comparison.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SensorsResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/map:
+    get:
+      tags: [map]
+      operationId: getMap
+      summary: Harmonized hotspots of a period on a grid
+      description: |
+        Sum of the harmonized hotspots of every cell over [`from`, `to`], aggregated to `resolution` degrees.
+        Only cells with hotspots are returned. Without `from`/`to` it is the current month.
+      parameters:
+        - $ref: '#/components/parameters/BBox'
+        - $ref: '#/components/parameters/Lat'
+        - $ref: '#/components/parameters/Lon'
+        - $ref: '#/components/parameters/RadiusKm'
+        - name: from
+          in: query
+          description: First month, `YYYY-MM`. Defaults to the current month.
+          schema: { type: string, pattern: '^\d{4}-\d{2}$', example: '2025-08' }
+        - name: to
+          in: query
+          description: Last month, `YYYY-MM`. Defaults to `from`.
+          schema: { type: string, pattern: '^\d{4}-\d{2}$', example: '2025-08' }
+        - name: resolution
+          in: query
+          description: Cell size in degrees.
+          schema: { type: number, enum: [0.25, 0.5, 1, 2], default: 1 }
+      responses:
+        '200':
+          description: The grid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MapResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/hotspots.csv:
+    get:
+      tags: [hotspots]
+      operationId: getHotspotsCsv
+      summary: Raw detections of an area as CSV
+      description: |
+        Every detection of the area between two days, at its own resolution (375 m VIIRS, 1 km MODIS), downloaded
+        from the FIRMS area API on demand. The source of each day is the one the calendar uses: MODIS Aqua
+        (`MODIS_SP`) before 2012-02, then Suomi NPP, then NOAA-20; standard processing when available, near real
+        time otherwise.
+
+        By default only the detections the calendar counts are returned (vegetation fires, MODIS confidence ≥ 30,
+        VIIRS confidence not low, the satellite of the day); `all=true` returns everything FIRMS has for those
+        sources. Up to 366 days for an area, 10 days for the whole world.
+      parameters:
+        - $ref: '#/components/parameters/BBox'
+        - $ref: '#/components/parameters/Lat'
+        - $ref: '#/components/parameters/Lon'
+        - $ref: '#/components/parameters/RadiusKm'
+        - $ref: '#/components/parameters/FromDay'
+        - $ref: '#/components/parameters/ToDay'
+        - $ref: '#/components/parameters/All'
+      responses:
+        '200':
+          description: |
+            `attachment; filename="hotspots_{from}_{to}.csv"`. `type` is FIRMS' classification (0 vegetation fire,
+            1 volcano, 2 static land source, 3 offshore), empty for near real time data; `provisional` is true for
+            near real time data.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            text/csv:
+              schema: { type: string }
+              example: |
+                latitude,longitude,acq_date,acq_time,satellite,instrument,confidence,frp,scan,track,daynight,type,provisional,source
+                38.06546,-1.34463,2025-07-05,0202,SNPP,VIIRS,n,1.05,0.39,0.36,N,0,false,VIIRS_SNPP_SP
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '502': { $ref: '#/components/responses/FirmsDown' }
+        '503': { $ref: '#/components/responses/FirmsBusy' }
+
+  /api/hotspots:
+    get:
+      tags: [hotspots]
+      operationId: getHotspots
+      summary: Raw detections of an area as compact JSON
+      description: Same as `/api/hotspots.csv`, as rows of values for drawing detections on a zoomed-in map.
+      parameters:
+        - $ref: '#/components/parameters/BBox'
+        - $ref: '#/components/parameters/Lat'
+        - $ref: '#/components/parameters/Lon'
+        - $ref: '#/components/parameters/RadiusKm'
+        - $ref: '#/components/parameters/FromDay'
+        - $ref: '#/components/parameters/ToDay'
+        - $ref: '#/components/parameters/All'
+      responses:
+        '200':
+          description: The detections.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HotspotsResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '502': { $ref: '#/components/responses/FirmsDown' }
+        '503': { $ref: '#/components/responses/FirmsBusy' }
+
+  /api/regions:
+    get:
+      tags: [regions]
+      operationId: listRegions
+      summary: Every FIRMS country and its harmonization
+      responses:
+        '200':
+          description: The regions, by name.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [regions]
+                properties:
+                  regions:
+                    type: array
+                    items: { $ref: '#/components/schemas/RegionSummary' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/regions/{id}:
+    get:
+      tags: [regions]
+      operationId: getRegion
+      summary: A country's harmonization, with the exam of every model
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: FIRMS country name with underscores, as on https://firms.modaps.eosdis.nasa.gov/country/.
+          schema: { type: string, example: South_Africa }
+      responses:
+        '200':
+          description: The region.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegionDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/coverage:
+    get:
+      tags: [regions]
+      operationId: getCoverage
+      summary: What the data covers
+      responses:
+        '200':
+          description: Coverage of the archive, the recent days and the countries.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Coverage' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/health:
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Health of the API and its database
+      responses:
+        '200':
+          description: Healthy.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503':
+          description: The database is down.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+
+  /api/openapi.yaml:
+    get:
+      tags: [system]
+      operationId: getOpenAPI
+      summary: This document
+      responses:
+        '200':
+          description: The OpenAPI document.
+          content:
+            application/yaml:
+              schema: { type: string }
+
+components:
+  parameters:
+    BBox:
+      name: bbox
+      in: query
+      description: |
+        Area as `west,south,east,north` in degrees (FIRMS order). West greater than east crosses the antimeridian.
+        Takes precedence over `lat`/`lon`. Without any area parameter the area is the whole world.
+      schema: { type: string, example: '-2.35,37.37,-0.65,38.76' }
+    Lat:
+      name: lat
+      in: query
+      description: Latitude of a point; use with `lon` and optionally `radius_km`.
+      schema: { type: number, minimum: -90, maximum: 90, example: 37.99 }
+    Lon:
+      name: lon
+      in: query
+      description: Longitude of a point; use with `lat`.
+      schema: { type: number, minimum: -180, maximum: 180, example: -1.13 }
+    RadiusKm:
+      name: radius_km
+      in: query
+      description: Radius around `lat`/`lon`, in km.
+      schema: { type: number, exclusiveMinimum: 0, maximum: 1000, default: 25 }
+    FromMonth:
+      name: from
+      in: query
+      description: First month, `YYYY-MM`. Defaults to and is clamped at 2002-07, the start of the record.
+      schema: { type: string, pattern: '^\d{4}-\d{2}$', example: '2002-07' }
+    ToMonth:
+      name: to
+      in: query
+      description: Last month, `YYYY-MM`, not after the current month. Defaults to the current month.
+      schema: { type: string, pattern: '^\d{4}-\d{2}$', example: '2026-11' }
+    FromDay:
+      name: from
+      in: query
+      description: First day, `YYYY-MM-DD`, from 2002-07-01. Defaults to six days before `to`.
+      schema: { type: string, format: date, example: '2025-07-01' }
+    ToDay:
+      name: to
+      in: query
+      description: Last day, `YYYY-MM-DD`, not in the future. Defaults to today (UTC).
+      schema: { type: string, format: date, example: '2025-09-30' }
+    All:
+      name: all
+      in: query
+      description: '`true` to return every detection, not only those the calendar counts.'
+      schema: { type: boolean, default: false }
+
+  responses:
+    BadRequest:
+      description: Invalid parameters.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: 'invalid area: south must be below north' }
+    NotFound:
+      description: Not found.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Unexpected error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    FirmsDown:
+      description: FIRMS did not answer.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    FirmsBusy:
+      description: The FIRMS map key used up its transactions, or downloads are not configured.
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Seconds to wait.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    Source:
+      type: string
+      description: |
+        Where a month comes from: `aqua_harmonized` (MODIS Aqua converted to the VIIRS scale), `viirs_snpp` (Suomi NPP
+        yearly archive) or `viirs_recent` (VIIRS from the area API after the archive).
+      enum: [aqua_harmonized, viirs_snpp, viirs_recent]
+
+    Area:
+      type: object
+      required: [world, bbox, grid_bbox, cells]
+      properties:
+        world: { type: boolean }
+        bbox:
+          description: Requested box, west, south, east, north.
+          type: array
+          items: { type: number }
+          minItems: 4
+          maxItems: 4
+        grid_bbox:
+          description: Box of the 0.25° cells actually summed.
+          type: array
+          items: { type: number }
+          minItems: 4
+          maxItems: 4
+        cells: { type: integer, description: "Number of 0.25° cells." }
+
+    CalendarResponse:
+      type: object
+      required: [area, archive_end, calendar, regions, notes, attribution]
+      properties:
+        area: { $ref: '#/components/schemas/Area' }
+        archive_end:
+          type: string
+          description: Last month of the yearly archive; later months come from the area API.
+          example: '2025-12'
+        calendar: { $ref: '#/components/schemas/Calendar' }
+        regions:
+          description: Countries whose fire overlaps the area, with their harmonization.
+          type: array
+          items: { $ref: '#/components/schemas/RegionNote' }
+        notes:
+          description: Plain language caveats for this calendar (estimated months, regional models, provisional data).
+          type: array
+          items: { type: string }
+        attribution: { type: string }
+
+    Calendar:
+      type: object
+      required: [from, to, data_until, months, grid, climatology, years, peak, scale]
+      properties:
+        from: { type: string, example: '2002-07' }
+        to:
+          type: string
+          description: Last month returned; never after the last day with data.
+          example: '2026-11'
+        data_until: { type: string, format: date, description: "Last day the data covers." }
+        months:
+          type: array
+          items: { $ref: '#/components/schemas/MonthStat' }
+        grid: { $ref: '#/components/schemas/Grid' }
+        climatology:
+          description: One entry per month of the year (January first), over complete months.
+          type: array
+          items: { $ref: '#/components/schemas/Climatology' }
+          minItems: 12
+          maxItems: 12
+        years:
+          type: array
+          items: { $ref: '#/components/schemas/YearStat' }
+        current:
+          oneOf:
+            - $ref: '#/components/schemas/Current'
+            - type: 'null'
+        peak: { $ref: '#/components/schemas/Peak' }
+        scale: { $ref: '#/components/schemas/Scale' }
+
+    MonthStat:
+      type: object
+      required: [month, year, month_of_year, hotspots, frp_mw, source, estimated, provisional, incomplete, class]
+      properties:
+        month: { type: string, example: '2017-07' }
+        year: { type: integer }
+        month_of_year: { type: integer, minimum: 1, maximum: 12 }
+        hotspots:
+          type: number
+          description: Harmonized hotspots (VIIRS scale). Fractional before 2012-02, where it is an estimate.
+        frp_mw: { type: number, description: "Harmonized fire radiative power, sum in MW." }
+        source: { $ref: '#/components/schemas/Source' }
+        estimated: { type: boolean, description: "Rebuilt from MODIS Aqua (up to 2012-01)." }
+        provisional: { type: boolean, description: "Contains near real time data." }
+        incomplete: { type: boolean, description: "The month is not over (or not fully fetched yet)." }
+        median_same_month: { type: [number, 'null'], description: "Median of this month of the year over complete months." }
+        anomaly_pct: { type: [number, 'null'], description: "Difference with that median, in %." }
+        percentile: { type: [number, 'null'], description: "Mid rank among the same month of every year, 0–1." }
+        class: { type: integer, description: "Color class (index into `scale.colors`)." }
+
+    Grid:
+      type: object
+      description: The calendar as a matrix, one row per year and twelve columns.
+      required: [years, values, classes]
+      properties:
+        years:
+          type: array
+          items: { type: integer }
+        values:
+          type: array
+          items:
+            type: array
+            minItems: 12
+            maxItems: 12
+            items: { type: [number, 'null'] }
+        classes:
+          description: -1 outside the range, 0 no hotspots, 1.. color class.
+          type: array
+          items:
+            type: array
+            minItems: 12
+            maxItems: 12
+            items: { type: integer }
+
+    Scale:
+      type: object
+      description: |
+        Accessible sequential color scale (ColorBrewer YlOrRd, colorblind safe). Class 0 (`colors[0]`) is no hotspots;
+        class i ≥ 1 holds values up to `breaks[i-1]`; the last class holds values above every break. Breaks are
+        quantiles of the months with hotspots.
+      required: [palette, breaks, colors]
+      properties:
+        palette: { type: string, example: YlOrRd }
+        breaks:
+          type: array
+          items: { type: number }
+        colors:
+          type: array
+          items: { type: string, example: '#fd8d3c' }
+
+    Climatology:
+      type: object
+      required: [month_of_year, years]
+      properties:
+        month_of_year: { type: integer, minimum: 1, maximum: 12 }
+        years: { type: integer, description: "Complete months it summarizes." }
+        median: { type: [number, 'null'] }
+        mean: { type: [number, 'null'] }
+        p25: { type: [number, 'null'] }
+        p75: { type: [number, 'null'] }
+        min: { type: [number, 'null'] }
+        max: { type: [number, 'null'] }
+
+    YearStat:
+      type: object
+      required: [year, hotspots, frp_mw, months, complete]
+      properties:
+        year: { type: integer }
+        hotspots: { type: number }
+        frp_mw: { type: number }
+        months: { type: integer, description: "Months of the year in the range." }
+        complete: { type: boolean }
+        rank: { type: [integer, 'null'], description: "Rank among complete years, 1 = most hotspots." }
+
+    Current:
+      type: object
+      description: The last month of the range against the same month of past years.
+      required: [month, hotspots, incomplete, elapsed_fraction, projected, rank, years_compared, status]
+      properties:
+        month: { type: string }
+        hotspots: { type: number, description: "Hotspots so far." }
+        incomplete: { type: boolean }
+        elapsed_fraction: { type: number, description: "Share of the month covered by the data." }
+        projected: { type: number, description: "Hotspots at the current pace for the whole month." }
+        median: { type: [number, 'null'], description: "Median of the same month in past years." }
+        expected_by_now: { type: [number, 'null'], description: "Median × elapsed fraction." }
+        anomaly_pct: { type: [number, 'null'], description: "Projected vs median, in %." }
+        percentile: { type: [number, 'null'] }
+        rank: { type: integer, description: "Rank of the projected value among past years, 1 = most." }
+        years_compared: { type: integer }
+        status:
+          type: string
+          description: |
+            `much_above` ≥ 90th percentile of past years, `above` ≥ 75th, `below` ≤ 25th, `much_below` ≤ 10th,
+            `normal` otherwise, `no_history` without past years.
+          enum: [much_above, above, normal, below, much_below, no_history]
+
+    Peak:
+      type: object
+      properties:
+        month_of_year: { type: integer, description: "Month of the year with the highest median." }
+        record_month: { type: string }
+        record_hotspots: { type: number }
+        busiest_year: { type: integer }
+        busiest_year_hotspots: { type: number }
+        quietest_year: { type: integer }
+        quietest_year_hotspots: { type: number }
+
+    SensorsResponse:
+      type: object
+      required: [area, months, ratios, attribution]
+      properties:
+        area: { $ref: '#/components/schemas/Area' }
+        months:
+          type: array
+          items:
+            type: object
+            required: [month, aqua, snpp, n20, harmonized]
+            properties:
+              month: { type: string }
+              aqua: { type: number, description: "Raw MODIS Aqua hotspots." }
+              snpp: { type: number, description: "Raw Suomi NPP hotspots (yearly archive)." }
+              n20: { type: number, description: "Raw NOAA-20 hotspots (yearly archive)." }
+              harmonized: { type: number }
+        ratios:
+          type: object
+          properties:
+            snpp_over_aqua: { type: [number, 'null'], description: "What harmonization corrects." }
+            n20_over_snpp: { type: [number, 'null'], description: "Should be close to 1." }
+        attribution: { type: string }
+
+    MapResponse:
+      type: object
+      required: [from, to, resolution, columns, cells, total_hotspots, max_hotspots, attribution]
+      properties:
+        from: { type: string }
+        to: { type: string }
+        resolution: { type: number }
+        columns:
+          type: array
+          items: { type: string }
+          example: [lat, lon, hotspots, frp_mw]
+        cells:
+          description: '[lat, lon, hotspots, frp_mw] of each cell center.'
+          type: array
+          items:
+            type: array
+            items: { type: number }
+            minItems: 4
+            maxItems: 4
+        total_hotspots: { type: number }
+        max_hotspots: { type: number }
+        attribution: { type: string }
+
+    HotspotsResponse:
+      type: object
+      required: [from, to, count, columns, rows, attribution]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        count: { type: integer }
+        columns:
+          type: array
+          items: { type: string }
+          example: [latitude, longitude, acq_date, acq_time, satellite, confidence, frp, scan, track, daynight, type, provisional, source]
+        rows:
+          type: array
+          items:
+            type: array
+            items: {}
+        attribution: { type: string }
+
+    RegionNote:
+      type: object
+      required: [id, name, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { $ref: '#/components/schemas/RegionStatus' }
+        quality: { $ref: '#/components/schemas/Quality' }
+        scope: { $ref: '#/components/schemas/Scope' }
+        model: { type: string }
+        pooled_with:
+          type: array
+          items: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+
+    RegionStatus:
+      type: string
+      description: |
+        `ok` harmonized, `insufficient_data` too little fire even pooled with neighbors (only recent VIIRS counts),
+        `pending` not ingested yet, `error` the last ingest failed (see `reason`).
+      enum: [ok, insufficient_data, pending, error]
+    Quality:
+      type: string
+      description: '`good` when the chosen model has |bias| ≤ 10 % and monthly R² ≥ 0.7 in the exam, `review` otherwise (see warnings).'
+      enum: [good, review]
+    Scope:
+      type: string
+      description: '`own` model learned from the country itself, `regional` pooled with neighbors.'
+      enum: [own, regional]
+
+    RegionSummary:
+      type: object
+      required: [id, name, status, pooled_with, warnings]
+      properties:
+        id: { type: string, example: Spain }
+        name: { type: string, example: Spain }
+        status: { $ref: '#/components/schemas/RegionStatus' }
+        reason: { type: string }
+        scope: { $ref: '#/components/schemas/Scope' }
+        pooled_with:
+          type: array
+          items: { type: string }
+        model:
+          type: string
+          description: |
+            Hotspot model: A constant ratio, B ratio per month of the year, C log-log regression, D quantile mapping,
+            E negative binomial count model, F/G A/E with day and night separately.
+          enum: [A, B, C, D, E, F, G]
+        model_name: { type: string, example: log-log regression }
+        energy_model:
+          type: string
+          description: FRP model (0 no correction, A–D as above).
+          enum: ['0', A, B, C, D]
+        quality: { $ref: '#/components/schemas/Quality' }
+        warnings:
+          type: array
+          items: { type: string }
+        bbox:
+          description: Extent of the country's fire, west, south, east, north.
+          type: [array, 'null']
+          items: { type: number }
+        centroid:
+          description: Fire-weighted centroid, lat, lon.
+          type: [array, 'null']
+          items: { type: number }
+        first_month: { type: string }
+        last_month: { type: string }
+
+    ExamEntry:
+      type: object
+      required: [model, name]
+      properties:
+        model: { type: string, description: "Model ID, or `raw` for MODIS as is." }
+        name: { type: string }
+        bias_pct: { type: [number, 'null'], description: "Total bias in the exam, %." }
+        zone_month_error: { type: [number, 'null'], description: "Mean absolute error per 1° zone and month (lower wins)." }
+        spearman_cell: { type: [number, 'null'], description: "Rank correlation per cell and month." }
+        r2_monthly_total: { type: [number, 'null'], description: "R² of the monthly totals." }
+        monthly_total_error: { type: [number, 'null'], description: "Mean absolute error of the monthly totals." }
+
+    RegionDetail:
+      allOf:
+        - $ref: '#/components/schemas/RegionSummary'
+        - type: object
+          properties:
+            train_hotspots: { type: integer, description: "Aqua hotspots it learned from (pooled total when regional)." }
+            exam_hotspots: { type: integer }
+            exam_bias_pct: { type: [number, 'null'] }
+            exam_r2: { type: [number, 'null'] }
+            exam:
+              description: Grade of every hotspot model plus the unharmonized baseline.
+              type: [array, 'null']
+              items: { $ref: '#/components/schemas/ExamEntry' }
+            energy_exam:
+              type: [array, 'null']
+              items: { $ref: '#/components/schemas/ExamEntry' }
+            jumps:
+              description: |
+                Ratio between the mean yearly totals of 2012–2014 and 2009–2011, at the sensor change.
+                `unharmonized` shows the jump, `harmonized` should be close to `aqua_only` (a single sensor).
+              type: [object, 'null']
+              properties:
+                unharmonized: { type: [number, 'null'] }
+                harmonized: { type: [number, 'null'] }
+                aqua_only: { type: [number, 'null'] }
+            handover_noaa20_over_snpp: { type: [number, 'null'], description: "NOAA-20 / Suomi NPP over their overlap." }
+            periods:
+              type: object
+              properties:
+                learn: { type: array, items: { type: string } }
+                exam: { type: array, items: { type: string } }
+                reconstructed: { type: array, items: { type: string } }
+            harmonized_at: { type: string, format: date-time }
+
+    Coverage:
+      type: object
+      required: [data_start, archive_end, regions, cell_degrees, citations, attribution]
+      properties:
+        data_start: { type: string, example: '2002-07' }
+        archive_end: { type: string, example: '2025-12' }
+        recent_first_day: { type: string, format: date }
+        recent_last_day: { type: string, format: date }
+        recent_final_until: { type: string, format: date, description: "Recent days up to here are final (standard processing)." }
+        regions:
+          type: object
+          properties:
+            total: { type: integer }
+            harmonized: { type: integer }
+            own_model: { type: integer }
+            regional_model: { type: integer }
+            insufficient_data: { type: integer }
+            pending: { type: integer }
+            error: { type: integer }
+        cell_degrees: { type: number, example: 0.25 }
+        citations:
+          type: array
+          items: { type: string }
+        attribution: { type: string }
+
+    Health:
+      type: object
+      required: [status, database, migration_version]
+      properties:
+        status: { type: string, enum: [ok, degraded, down] }
+        database: { type: string, enum: [ok, down] }
+        migration_version: { type: integer }
+        greeting: { type: string }

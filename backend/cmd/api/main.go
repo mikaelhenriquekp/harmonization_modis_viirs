@@ -13,9 +13,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nasa-challenge/app/backend/internal/calendar"
 	"github.com/nasa-challenge/app/backend/internal/config"
 	"github.com/nasa-challenge/app/backend/internal/database"
+	"github.com/nasa-challenge/app/backend/internal/firemap"
+	"github.com/nasa-challenge/app/backend/internal/firms"
 	"github.com/nasa-challenge/app/backend/internal/health"
+	"github.com/nasa-challenge/app/backend/internal/hotspots"
+	"github.com/nasa-challenge/app/backend/internal/regions"
 	"github.com/nasa-challenge/app/backend/internal/server"
 	"github.com/nasa-challenge/app/backend/migrations"
 )
@@ -50,13 +55,24 @@ func run() error {
 	}
 
 	healthHandler := health.NewHandler(health.NewService(health.NewPostgresRepository(db), log))
+	calendarHandler := calendar.NewHandler(calendar.NewService(calendar.NewPostgresRepository(db), time.Now), time.Now)
+	regionsHandler := regions.NewHandler(regions.NewService(regions.NewPostgresRepository(db)))
+	mapHandler := firemap.NewHandler(firemap.NewService(firemap.NewPostgresRepository(db)), time.Now)
+	hotspotsHandler := hotspots.NewHandler(nil, time.Now)
+	if cfg.MapKey != "" {
+		client := firms.NewClient(cfg.MapKey)
+		client.Retries, client.LimitRetries = 2, 0 // answer users fast instead of waiting out the key's limit
+		hotspotsHandler = hotspots.NewHandler(hotspots.NewService(client), time.Now)
+	} else {
+		log.Warn("FIRMS_MAP_KEY is not set: raw hotspot downloads are disabled")
+	}
 
 	srv := &http.Server{
 		Addr:              net.JoinHostPort("", cfg.Port),
-		Handler:           server.NewRouter(log, healthHandler),
+		Handler:           server.NewRouter(log, healthHandler, calendarHandler, regionsHandler, mapHandler, hotspotsHandler),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		WriteTimeout:      60 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 

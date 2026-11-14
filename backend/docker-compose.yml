@@ -1,0 +1,43 @@
+# Development stack: `docker compose up` starts Postgres and the API with hot reload.
+name: app-dev
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      APP_ENV: development
+      PORT: "8080"
+      LOG_LEVEL: debug
+      DATABASE_URL: postgres://app:app@db:5432/app?sslmode=disable
+    ports:
+      - "${API_HOST_PORT:-8080}:8080"
+    volumes:
+      - .:/app
+      - gomodcache:/go/pkg/mod
+      - gobuildcache:/root/.cache/go-build
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  gomodcache:
+  gobuildcache:

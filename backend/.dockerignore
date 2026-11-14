@@ -1,0 +1,8 @@
+tmp/
+bin/
+.env
+.env.*
+coverage.out
+docker-compose.yml
+Dockerfile*
+.air.toml

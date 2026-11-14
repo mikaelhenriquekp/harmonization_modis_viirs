@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,27 +11,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Instrument+Serif:ital@0;1&family=Chivo+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <script>
-      try {
-        var t = localStorage.getItem('theme')
-        if (t !== 'light' && t !== 'dark')
-          t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
-        document.documentElement.classList.toggle('dark', t === 'dark')
-        document.documentElement.dataset.theme = t
-      } catch (e) {
-        document.documentElement.classList.add('dark')
-      }
-    </script>
 
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#0b1640" />
+    <meta name="theme-color" content="#100d0f" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Paparajote Lunar" />

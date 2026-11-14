@@ -14,7 +14,6 @@ import {
 } from 'react-leaflet'
 
 import type { AnomalyCell, MapResponse } from '@/api/types'
-import { useTheme } from '@/hooks/use-theme'
 import { areaBounds, type Area, type Bounds } from '@/lib/area'
 import type { DrawingAction, DrawingState } from '@/lib/drawing'
 import { formatCount, formatSignedPct } from '@/lib/format'
@@ -41,7 +40,7 @@ const TILES = {
 const TILE_ATTRIBUTION =
   'Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors · Hotspots: NASA FIRMS'
 
-const AREA_STYLE = { color: '#fdad1e', weight: 2, fillColor: '#fdad1e', fillOpacity: 0.08 }
+const AREA_STYLE = { color: '#f0c048', weight: 2, fillColor: '#f0c048', fillOpacity: 0.08 }
 
 function FitArea({ area }: { area: Area }) {
   const map = useMap()
@@ -120,9 +119,8 @@ export function AreaMap({
   anomalies,
   className,
 }: AreaMapProps) {
-  const { theme } = useTheme()
   const renderer = useMemo(() => L.canvas({ padding: 0.3 }), [])
-  // CSS variables do not reach the canvas: resolve them (a theme change re-renders us).
+  // CSS variables do not reach the canvas: resolve them.
   const style = getComputedStyle(document.documentElement)
   const css = (v: string) =>
     v.startsWith('var(') ? style.getPropertyValue(v.slice(4, -1)).trim() || '#f0933a' : v
@@ -137,7 +135,7 @@ export function AreaMap({
       attributionControl
       preferCanvas
     >
-      <TileLayer key={theme} url={TILES[theme]} attribution={TILE_ATTRIBUTION} maxZoom={16} />
+      <TileLayer url={TILES.dark} attribution={TILE_ATTRIBUTION} maxZoom={16} />
       <FitArea area={area} />
       <Taps drawing={drawing} dispatch={dispatch} />
 
@@ -187,7 +185,7 @@ export function AreaMap({
               key={i}
               center={p}
               radius={i === 0 ? 7 : 5}
-              pathOptions={{ color: '#fdad1e', fillColor: '#0b1640', fillOpacity: 1, weight: 2 }}
+              pathOptions={{ color: '#f0c048', fillColor: '#100d0f', fillOpacity: 1, weight: 2 }}
               eventHandlers={
                 i === 0
                   ? {

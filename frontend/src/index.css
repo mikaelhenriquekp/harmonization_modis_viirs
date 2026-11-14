@@ -4,120 +4,122 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Paparajote Lunar: the brand's space navy and cream, paparajote gold as the
- * accent. Fire data uses one-hue orange ramps validated for each surface
- * (ordinal: monotone lightness, visible steps, light end clears the surface).
+ * Mai's "Brasa" wireframe: warm near-black surfaces, bone text, saffron as the
+ * accent, coral and garnet for fire, slate for cool. The calendar uses her
+ * fire ramp, dark (little) to bright (a lot).
  */
 :root {
-  --radius: 0.75rem;
+  --radius: 1rem;
 
-  --background: #fff6e4; /* cream */
-  --surface: #fffbf2;
-  --surface-2: #f6ead0;
-  --foreground: #03133f; /* navy */
-  --ink-2: #2e3a6b;
-  --muted-foreground: #5c6488;
-  --line: rgb(3 19 63 / 0.12);
-  --accent-gold: #fdad1e;
-  --accent-ink: #9a5b00; /* gold dark enough for text on cream */
+  --bg: #100d0f;
+  --rail: #1a1518;
+  --card: #1e181b;
+  --card-2: #272024;
+  --line: #2f272b;
+  --bone: #f2ece4;
+  --soft: #b3a7ac;
+  --mute: #7f7378;
+  --saffron: #f0c048;
+  --saffron-soft: rgb(240 192 72 / 0.15);
+  --coral: #ee8f5a;
+  --garnet: #c23b54;
+  --slate: #8fa6ba;
+  --slate-soft: rgb(143 166 186 / 0.13);
+  --on-accent: #100d0f;
 
-  --heat-0: #efe3c6;
-  --heat-1: #f39466;
-  --heat-2: #e57a43;
-  --heat-3: #d75e11;
-  --heat-4: #c44500;
-  --heat-5: #aa3400;
-  --heat-6: #8d2800;
-  --heat-7: #6e2200;
+  /* calendar fire ramp: 0 = no hotspots, 1..6 more and more fire */
+  --heat-0: #231d20;
+  --heat-1: #3e1e28;
+  --heat-2: #6e2536;
+  --heat-3: #c23b54;
+  --heat-4: #ee8f5a;
+  --heat-5: #f0c048;
+  --heat-6: #fbe7a8;
 
-  --tone-critical: #c62f2f;
-  --tone-serious: #c96a10;
-  --tone-neutral: #6b7194;
-  --tone-cool: #3f7cc4;
-  --tone-cooler: #23559c;
-  --tone-none: #9aa0b8;
+  /* anomaly ramp: far below .. far above */
+  --anom-much-below: #a9bed0;
+  --anom-below: #5f7a92;
+  --anom-normal: #33414e;
+  --anom-none: #262022;
+  --anom-above: #a8344b;
+  --anom-much-above: #ee8f5a;
 
-  --series-harmonized: #2a78d6;
-  --series-aqua: #eb6834;
-  --series-snpp: #1baf7a;
-  --series-n20: #eda100;
+  --tone-critical: #ee8f5a;
+  --tone-serious: #c23b54;
+  --tone-neutral: #7f7378;
+  --tone-cool: #8fa6ba;
+  --tone-cooler: #5f7a92;
+  --tone-none: #4a4044;
 
-  /* shadcn names, used by the ui primitives */
-  --card: var(--surface);
-  --card-foreground: var(--foreground);
-  --primary: var(--foreground);
-  --primary-foreground: var(--background);
-  --secondary: var(--surface-2);
-  --secondary-foreground: var(--foreground);
-  --muted: var(--surface-2);
-  --accent: var(--surface-2);
-  --accent-foreground: var(--foreground);
-  --destructive: var(--tone-critical);
+  --series-harmonized: #f0c048;
+  --series-aqua: #ee8f5a;
+  --series-snpp: #8fa6ba;
+  --series-n20: #c23b54;
+
+  /* names used by the ui primitives */
+  --background: var(--bg);
+  --foreground: var(--bone);
+  --surface: var(--card);
+  --surface-2: var(--card-2);
+  --ink-2: var(--soft);
+  --muted-foreground: var(--mute);
+  --accent-gold: var(--saffron);
+  --accent-ink: var(--saffron);
+  --card-foreground: var(--bone);
+  --primary: var(--bone);
+  --primary-foreground: var(--bg);
+  --secondary: var(--card-2);
+  --secondary-foreground: var(--bone);
+  --muted: var(--card-2);
+  --accent: var(--card-2);
+  --accent-foreground: var(--bone);
+  --destructive: var(--garnet);
   --border: var(--line);
   --input: var(--line);
-  --ring: var(--accent-gold);
-}
-
-.dark {
-  --background: #0b1640; /* space */
-  --surface: #101d4f;
-  --surface-2: #17275f;
-  --foreground: #fff6e4;
-  --ink-2: #d5d8ea;
-  --muted-foreground: #9aa1c4;
-  --line: rgb(255 246 228 / 0.13);
-  --accent-ink: #fdad1e;
-
-  --heat-0: #1b2a66;
-  --heat-1: #9d5300;
-  --heat-2: #bd6400;
-  --heat-3: #da7900;
-  --heat-4: #f0933a;
-  --heat-5: #fdb171;
-  --heat-6: #ffcd9e;
-  --heat-7: #ffebd1;
-
-  --tone-critical: #ff6b5e;
-  --tone-serious: #ffa24d;
-  --tone-neutral: #9aa1c4;
-  --tone-cool: #7fb0ec;
-  --tone-cooler: #4f8ce8;
-  --tone-none: #6f7697;
-
-  --series-harmonized: #3987e5;
-  --series-aqua: #d95926;
-  --series-snpp: #199e70;
-  --series-n20: #c98500;
+  --ring: var(--saffron);
 }
 
 @theme inline {
   --font-sans: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --font-mono: 'Chivo Mono', ui-monospace, monospace;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-foreground: var(--foreground);
-  --color-ink-2: var(--ink-2);
-  --color-line: var(--line);
-  --color-gold: var(--accent-gold);
-  --color-gold-ink: var(--accent-ink);
+  --color-background: var(--bg);
+  --color-foreground: var(--bone);
+  --color-rail: var(--rail);
   --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+  --color-card-2: var(--card-2);
+  --color-surface: var(--card);
+  --color-surface-2: var(--card-2);
+  --color-line: var(--line);
+  --color-bone: var(--bone);
+  --color-soft: var(--soft);
+  --color-mute: var(--mute);
+  --color-ink-2: var(--soft);
+  --color-saffron: var(--saffron);
+  --color-saffron-soft: var(--saffron-soft);
+  --color-coral: var(--coral);
+  --color-garnet: var(--garnet);
+  --color-slate: var(--slate);
+  --color-slate-soft: var(--slate-soft);
+  --color-gold: var(--saffron);
+  --color-gold-ink: var(--saffron);
+  --color-card-foreground: var(--bone);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+  --color-muted-foreground: var(--mute);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--saffron);
   --color-tone-critical: var(--tone-critical);
   --color-tone-serious: var(--tone-serious);
   --color-tone-neutral: var(--tone-neutral);
@@ -128,23 +130,21 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/60;
+    @apply border-line outline-ring/60;
   }
   html {
-    color-scheme: light;
-  }
-  html.dark {
     color-scheme: dark;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-bone font-sans antialiased;
     font-optical-sizing: auto;
   }
   :focus-visible {
-    outline: 2px solid var(--accent-gold);
+    outline: 2px solid var(--saffron);
     outline-offset: 2px;
   }
-  .tabular {
+  .tabular,
+  .num {
     font-variant-numeric: tabular-nums;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -157,23 +157,72 @@
   }
 }
 
-/* Leaflet sits inside our themed surfaces */
+@layer components {
+  /* Instrument Serif italic accents in headlines, as in the wireframe */
+  .serif {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+  .hatch {
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgb(255 255 255 / 0.18) 0 2px,
+      transparent 2px 7px
+    );
+  }
+  .tri::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    border-left: 6px solid transparent;
+    border-top: 6px solid currentColor;
+  }
+  @keyframes ping {
+    0% {
+      transform: translate(-50%, -50%) scale(0.4);
+      opacity: 0.9;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1.6);
+      opacity: 0;
+    }
+  }
+  .ring-ping {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 64px;
+    height: 64px;
+    border-radius: 9999px;
+    border: 1.5px solid currentColor;
+    animation: ping 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+    pointer-events: none;
+  }
+}
+
 .leaflet-container {
   font: inherit;
-  background: var(--surface-2);
+  background: var(--card-2);
 }
 .leaflet-control-attribution {
   font-size: 10px;
+  background: rgb(16 13 15 / 0.75) !important;
+  color: var(--mute);
 }
-.dark .leaflet-control-attribution {
-  background: rgb(11 22 64 / 0.75) !important;
-  color: var(--muted-foreground);
+.leaflet-control-attribution a {
+  color: var(--soft);
 }
-.dark .leaflet-control-attribution a {
-  color: var(--ink-2);
-}
-.dark .leaflet-bar a {
-  background: var(--surface);
-  color: var(--foreground);
+.leaflet-bar a {
+  background: var(--card);
+  color: var(--bone);
   border-color: var(--line);
 }

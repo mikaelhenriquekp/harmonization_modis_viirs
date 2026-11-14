@@ -27,7 +27,7 @@ interface DropPanelProps {
   className?: string
 }
 
-/** What the record says around a dropped fire. */
+/** What the record says around a chosen point. */
 export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: DropPanelProps) {
   const area: Area = { kind: 'point', lat, lon, radiusKm }
   const q = useCalendar(area, {})
@@ -50,7 +50,7 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
 
   return (
     <aside
-      aria-label="Hotspots around the dropped fire"
+      aria-label="Fire record around the chosen point"
       className={cn('bg-card border-line flex flex-col gap-5 overflow-y-auto p-6', className)}
     >
       <header className="flex items-start gap-3">
@@ -58,7 +58,7 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
           <Flame className="size-5" fill="currentColor" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="eyebrow">Dropped fire</p>
+          <p className="eyebrow">Chosen point</p>
           <h3 className="truncate text-[20px] leading-tight font-semibold">
             {place ?? 'Your point'}
           </h3>
@@ -241,7 +241,7 @@ export function DropPanel({ lat, lon, radiusKm, onRadius, onClose, className }: 
           onClick={onClose}
           className="text-soft hover:text-bone flex h-9 items-center justify-center gap-1 rounded-full text-[13px]"
         >
-          <MapPinOff className="size-[18px]" /> Remove the fire
+          <MapPinOff className="size-[18px]" /> Close
         </button>
       </div>
     </aside>

@@ -29,8 +29,6 @@ interface GlobeProps {
   pins: GlobePin[]
   marker?: { lat: number; lon: number } | null
   onPick: (lat: number, lon: number) => void
-  /** Increment to drop the fire at the center of the current view. */
-  dropCenter?: number
   children?: ReactNode
   className?: string
 }
@@ -56,17 +54,8 @@ function reducedMotion(): boolean {
   return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 }
 
-/** The globe: land, this month's fire, pins, and a dropped fire marker. */
-export function Globe({
-  fire,
-  maxFire,
-  pins,
-  marker,
-  onPick,
-  dropCenter = 0,
-  children,
-  className,
-}: GlobeProps) {
+/** The globe: land, this month's fire, pins, and the chosen point. */
+export function Globe({ fire, maxFire, pins, marker, onPick, children, className }: GlobeProps) {
   const wrap = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const [size, setSize] = useState(480)
@@ -87,18 +76,6 @@ export function Globe({
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-
-  // drop the fire where the reader is looking
-  const rotateRef = useRef(rotate)
-  rotateRef.current = rotate
-  useEffect(() => {
-    if (dropCenter > 0) {
-      spinning.current = false
-      onPick(-rotateRef.current[1], ((-rotateRef.current[0] + 540) % 360) - 180)
-    }
-    // only when asked, not when the callback changes
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [dropCenter])
 
   // a slow spin until the reader touches the globe
   useEffect(() => {
@@ -211,14 +188,7 @@ export function Globe({
             if (ll) onPick(ll[1], ll[0])
           }
         }}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault()
-          const box = e.currentTarget.getBoundingClientRect()
-          const ll = pointAt(projection, [e.clientX - box.left, e.clientY - box.top])
-          if (ll) onPick(ll[1], ll[0])
-        }}
-        aria-label="Globe with this month's fire. Drag to turn it; tap a place to drop the fire there."
+        aria-label="Globe with this month's fire. Drag to turn it; tap a place to see its record."
         role="application"
       >
         <div

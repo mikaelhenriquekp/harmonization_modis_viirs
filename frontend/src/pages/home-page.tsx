@@ -5,7 +5,6 @@ import { Link } from 'react-router'
 import { BigNumber, Card } from '@/components/card'
 import type { GlobePin } from '@/components/globe/globe'
 import { DropPanel } from '@/components/home/drop-panel'
-import { FireDock } from '@/components/home/fire-dock'
 import { MonthCards, ProgressRings, SeasonPulse } from '@/components/home/home-cards'
 import { ErrorState, Skeleton } from '@/components/state'
 import { useAnomalyMap, useCalendar, useCoverage, useFireMap } from '@/hooks/use-fire'
@@ -26,7 +25,6 @@ export function HomePage() {
   const anomalies = useAnomalyMap({ resolution: 2 })
   const [drop, setDrop] = useState<{ lat: number; lon: number } | null>(null)
   const [radius, setRadius] = useState(10)
-  const [dropCenter, setDropCenter] = useState(0)
 
   const pins = useMemo<GlobePin[]>(() => {
     const cells = (anomalies.data?.cells ?? [])
@@ -42,7 +40,7 @@ export function HomePage() {
       lat: c.lat,
       lon: c.lon,
       color: PIN_COLORS[i],
-      label: `Far above normal: about ${formatCount(c.projected)} hotspots this month${c.anomaly_pct !== null ? ` (${formatSignedPct(c.anomaly_pct)} vs usual)` : ''}. Drop the fire here.`,
+      label: `Far above normal: about ${formatCount(c.projected)} hotspots this month${c.anomaly_pct !== null ? ` (${formatSignedPct(c.anomaly_pct)} vs usual)` : ''}. See this place.`,
     }))
   }, [anomalies.data])
 
@@ -120,12 +118,13 @@ export function HomePage() {
               maxFire={fire.data?.max_hotspots ?? 1}
               pins={pins}
               marker={drop}
-              dropCenter={dropCenter}
               onPick={pick}
               className="aspect-square w-full max-w-[680px] lg:max-h-[calc(100svh-12rem)]"
             />
           </Suspense>
-          <FireDock onDropCenter={() => setDropCenter((n) => n + 1)} />
+          <p className="text-soft text-center text-[13px]">
+            Tap a place on the globe, or a pin, to see its fire record. Drag to turn it.
+          </p>
         </section>
 
         <section aria-label="Fire season" className="min-w-0 lg:col-start-3 lg:row-start-1">

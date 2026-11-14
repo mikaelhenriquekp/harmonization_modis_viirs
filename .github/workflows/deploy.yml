@@ -35,6 +35,9 @@ jobs:
           POSTGRES_DB: ${{ vars.POSTGRES_DB || 'app' }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.4-mini' }}
+          ASSISTANT_PER_HOUR: ${{ vars.ASSISTANT_PER_HOUR || '20' }}
         run: |
           umask 077
           {
@@ -44,6 +47,9 @@ jobs:
             echo "POSTGRES_DB=${POSTGRES_DB}"
             echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
             echo "FIRMS_MAP_KEY=${FIRMS_MAP_KEY}"
+            echo "OPENAI_API_KEY=${OPENAI_API_KEY}"
+            echo "OPENAI_MODEL=${OPENAI_MODEL}"
+            echo "ASSISTANT_PER_HOUR=${ASSISTANT_PER_HOUR}"
           } > deploy/.env
 
       - name: Compose up

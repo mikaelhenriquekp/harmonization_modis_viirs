@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import { getCalendar, getSensors, type MonthRange } from '@/api/calendar'
 import { getAnomalyMap, getFireMap, type AnomalyQuery, type FireMapQuery } from '@/api/firemap'
+import { getHotspots } from '@/api/hotspots'
 import { getCoverage, getRegion, getRegions } from '@/api/regions'
 import { areaToSearch, type Area } from '@/lib/area'
 
@@ -80,5 +81,15 @@ export function useCoverage() {
     queryKey: fireKeys.coverage,
     queryFn: ({ signal }) => getCoverage(signal),
     staleTime: 60_000,
+  })
+}
+
+export function useHotspots(area: Area, from: string | undefined, to: string | undefined) {
+  return useQuery({
+    queryKey: ['hotspots', areaToSearch(area), from, to] as const,
+    queryFn: ({ signal }) => getHotspots(area, from!, to!, signal),
+    enabled: !!from && !!to,
+    staleTime: FIVE_MINUTES,
+    retry: false,
   })
 }
